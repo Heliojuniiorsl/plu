@@ -64,6 +64,11 @@
             transition: all 0.3s ease;
         }
 
+        input[type="text"].error {
+            animation: shake 0.5s;
+            border-color: red;
+        }
+
         input[type="text"]:focus {
             outline: none;
             border-color: #ff6347;
@@ -81,18 +86,32 @@
             width: 320px;
             border-radius: 8px;
             margin-top: 20px;
-            transition: background-color 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         #calculateButton:hover {
             background-color: #ff6347;
+            transform: scale(1.05);
         }
 
         #result {
-            font-size: 40px;
+            font-size: 36px;
             margin: 20px;
             color: #ffffff;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+            animation: fadeIn 1s ease-out;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            display: none;
+        }
+
+        #result.active {
+            display: block;
         }
 
         #error-message {
@@ -121,80 +140,104 @@
             font-size: 12px;
         }
 
-        /* Animação para o balanceamento da caixa de texto */
-        @keyframes shake {
-            0% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            50% { transform: translateX(10px); }
-            75% { transform: translateX(-10px); }
-            100% { transform: translateX(0); }
-        }
-
-        .error {
-            border-color: #ff0000 !important;
-            animation: shake 0.5s ease-in-out;
-        }
-
-        /* Estilo do pop-up */
+        /* Estilo do popup */
         #popup {
-            display: flex; /* Exibido assim que a página carregar */
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Fundo semi-transparente */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-
-        #popupContent {
-            background-color: #fff;
-            padding: 30px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            width: 400px;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
             border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            padding: 20px;
             text-align: center;
-            width: 60%;
-            max-width: 600px;
-            color: #333;
-            font-size: 20px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            position: relative;
-            font-family: 'Arial', cursive; /* Nova fonte */
-        }
-
-        #popup h2 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            font-weight: 600;
-            color: #4CAF50; /* Cor verde */
-        }
-
-        #popup p {
-            color: #000000; /* Cor laranja */
+            display: none;
+            animation: popupIn 0.4s forwards;
+            z-index: 1000;
         }
 
         #popup img {
-            width: 150px; /* Tamanho da foto */
+            width: 150px;
             height: 150px;
-            border-radius: 50%; /* Deixa a foto arredondada */
-            margin-bottom: 20px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            border: 2px solid #fff;
         }
 
-        #closePopup {
+        #popup .close {
             position: absolute;
             top: 10px;
             right: 10px;
             background: none;
             border: none;
-            font-size: 30px;
-            color: #FF6347; /* Cor do "X" */
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
             cursor: pointer;
+        }
+
+        #popup .close:hover {
+            color: #ff6347;
+        }
+
+        /* Animações */
+        @keyframes popupIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes popupOut {
+            from {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% {
+                transform: translateX(0);
+            }
+            25% {
+                transform: translateX(-5px);
+            }
+            50% {
+                transform: translateX(5px);
+            }
+            75% {
+                transform: translateX(-5px);
+            }
+        }
+
+        /* Responsividade */
+        @media (max-width: 600px) {
+            input[type="text"], #calculateButton {
+                width: 90%;
+            }
+
+            #popup {
+                width: 90%;
+            }
         }
     </style>
 </head>
 <body>
+    <div id="popup">
+        <button class="close" onclick="fecharPopup()">&times;</button>
+        <img src="https://i.postimg.cc/VLH88vx9/file-1.jpg" alt="Foto do Hélio Júnior">
+        <p><strong>Desenvolvido por Hélio Júnior</strong><br>Chefe de Seção - Tel: 61998427629 - Loja 1229</p>
+    </div>
 
     <h1>CÁLCULO DE PLU</h1>
 
@@ -203,17 +246,7 @@
         <input type="text" id="plu" pattern="[0-9]{2,5}" title="Digite um PLU com 2 a 5 dígitos." required>
         <button id="calculateButton">Calcular</button>
         <div id="result"></div>
-        <div id="error-message" class="error-message"></div> <!-- Mensagem de erro -->
-    </div>
-
-    <!-- Pop-up -->
-    <div id="popup">
-        <div id="popupContent">
-            <img src="https://i.postimg.cc/VLH88vx9/file-1.jpg" alt="Foto do Autor"> <!-- Substitua com o seu link de foto -->
-            <p>Desenvolvido por Hélio Júnior<br>
-            Chefe de Seção - Tel: 61998427629 - Loja 1229</p>
-            <button id="closePopup">X</button>
-        </div>
+        <div id="error-message" class="error-message"></div>
     </div>
 
     <footer>
@@ -227,17 +260,28 @@
         const resultDiv = document.getElementById('result');
         const errorMessage = document.getElementById('error-message');
         const popup = document.getElementById('popup');
-        const closePopup = document.getElementById('closePopup');
 
-        pluInput.addEventListener('keyup', function(event) {
+        // Exibir popup ao carregar
+        window.onload = () => {
+            popup.style.display = 'block';
+        };
+
+        // Fechar popup
+        function fecharPopup() {
+            popup.style.animation = 'popupOut 0.4s forwards';
+            setTimeout(() => popup.style.display = 'none', 400);
+        }
+
+        // Evento para o botão de calcular
+        calculateButton.addEventListener('click', calcularPLU);
+
+        // Evento para pressionar Enter no campo de texto
+        pluInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 calcularPLU();
             }
         });
 
-        calculateButton.addEventListener('click', calcularPLU);
-
-        // Função para calcular o PLU
         function calcularPLU() {
             const plu = pluInput.value.trim();
             if (/^\d{2,5}$/.test(plu)) {
@@ -262,20 +306,21 @@
                     diferenca = arredondado - calculo;
                 }
 
-                resultDiv.innerHTML = `PLU: ${plu}<br>Último dígito: ${diferenca}`;
+                resultDiv.innerHTML = `<strong>PLU:</strong> ${plu}<br><strong>Último dígito:</strong> ${diferenca}`;
+                resultDiv.classList.add('active'); // Mostra o resultado
                 errorMessage.innerHTML = ''; // Limpa qualquer erro
-                pluInput.classList.remove('error'); // Limpa o estilo de erro quando o PLU é válido
+                pluInput.classList.remove('error'); // Remove o estilo de erro
             } else {
                 resultDiv.innerHTML = ''; // Limpa o resultado
-                errorMessage.innerHTML = 'Só é válido PLUs entre 2 e 5 dígitos.'; // Mensagem de erro atualizada
-                pluInput.classList.add('error'); // Adiciona o estilo de erro
+                resultDiv.classList.remove('active'); // Oculta o resultado
+                errorMessage.innerHTML = 'Só é válido PLUs entre 2 e 5 dígitos.';
+                pluInput.classList.add('error'); // Aplica a animação de erro
+
+                setTimeout(() => {
+                    pluInput.classList.remove('error'); // Remove classe para repetir a animação no próximo erro
+                }, 500);
             }
         }
-
-        // Função para fechar o pop-up
-        closePopup.addEventListener('click', function() {
-            popup.style.display = 'none';
-        });
     </script>
 </body>
 </html>
