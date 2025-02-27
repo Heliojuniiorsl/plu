@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Último dígito - PLU</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;500&family=Indie+Flower&display=swap" rel="stylesheet">
     <style>
@@ -13,17 +13,19 @@
             color: #fff;
             margin: 0;
             padding: 0;
-            height: 98vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
-            backdrop-filter: blur(10px);
+            align-items: center;
+            backdrop-filter: blur(6px);
+            overflow: hidden; /* Evitar o deslocamento da página */
         }
 
         h1 {
             font-family: 'Roboto', sans-serif;
             font-size: 40px;
-            background-color: rgba(52, 161, 94, 0.8);
+            background-color: rgb(12, 37, 44);
             padding: 19px;
             margin: 0;
             border-radius: 10px;
@@ -43,6 +45,10 @@
             justify-content: center;
             margin-top: 100px;
             flex-grow: 1;
+            width: 100%;
+            max-width: 600px;
+            padding: 0 20px;
+            box-sizing: border-box;
         }
 
         label {
@@ -55,13 +61,15 @@
         input[type="text"] {
             padding: 12px;
             font-size: 18px;
-            width: 280px;
+            width: 100%;
+            max-width: 280px;
             border: 2px solid #32cd32;
             background-color: rgba(255, 255, 255, 0.6);
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(5px);
             transition: all 0.3s ease;
+            text-align: center; /* Centralizar o texto */
         }
 
         input[type="text"].error {
@@ -79,11 +87,12 @@
         #calculateButton {
             padding: 14px 30px;
             font-size: 20px;
-            background-color: #ff4500;
+            background-color: #177080;
             color: #fff;
             border: none;
             cursor: pointer;
-            width: 320px;
+            width: 100%;
+            max-width: 320px;
             border-radius: 8px;
             margin-top: 20px;
             transition: all 0.2s ease;
@@ -95,17 +104,17 @@
         }
 
         #result {
-            font-size: 36px;
-            margin: 20px;
+            font-size: 28px; /* Diminuir o tamanho da fonte */
+            margin: 15px; /* Ajustar a margem */
+            padding: 15px; /* Ajustar o padding */
             color: #ffffff;
             text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
             animation: fadeIn 1s ease-out;
             background-color: rgba(0, 0, 0, 0.6);
-            padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
             text-align: center;
-            width: 90%;
+            width: 100%;
             max-width: 400px;
             display: none;
         }
@@ -119,11 +128,23 @@
             margin-top: 10px;
             color: #ff0000;
             font-weight: bold;
-            text-shadow: 1px 1px 3px rgb(255, 255, 255);
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            display: none; /* Inicialmente oculto */
+        }
+
+        #error-message.active {
+            display: block; /* Mostra a mensagem de erro */
+            animation: shake 0.5s; /* Adiciona a animação de balanço */
         }
 
         footer {
-            background-color: rgba(52, 161, 94, 0.8);
+            background-color: rgb(12, 37, 44);
             color: #fff;
             padding: 10px;
             font-family: 'Roboto', sans-serif;
@@ -146,7 +167,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) scale(0.8);
-            width: 400px;
+            width: 90%;
+            max-width: 400px;
             background-color: rgba(0, 0, 0, 0.9);
             color: white;
             border-radius: 10px;
@@ -180,6 +202,46 @@
 
         #popup .close:hover {
             color: #ff6347;
+        }
+
+        #copyButton {
+            background-color: transparent;
+            border: none;
+            color: #0abe55;
+            font-size: 50px; /* Aumentei o tamanho da fonte */
+            cursor: pointer;
+            margin-left: 45px; /* Adicionei margem para movê-lo mais à direita */
+            transition: color 0.3s;
+        }
+
+        #copyButton:hover {
+            color: #ff6347;
+        }
+
+        .copied {
+            color: #32cd32; /* Cor verde para indicar que foi copiado */
+        }
+
+        #menuButton {
+            position: fixed;
+            top: 90px; /* Mover abaixo do h1 */
+            left: 8px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 20;
+        }
+
+        #menuButton:hover {
+            background-color: #ff6347;
+        }
+
+        .virtual-keyboard {
+            display: grid; /* Remover o teclado numérico */
         }
 
         /* Animações */
@@ -220,6 +282,21 @@
             }
         }
 
+        .social-icons {
+            margin-top: 10px;
+        }
+
+        .social-icons a {
+            color: #fff;
+            margin: 0 10px;
+            font-size: 24px;
+            transition: color 0.3s;
+        }
+
+        .social-icons a:hover {
+            color: #ff6347;
+        }
+
         /* Responsividade */
         @media (max-width: 600px) {
             input[type="text"], #calculateButton {
@@ -229,8 +306,17 @@
             #popup {
                 width: 90%;
             }
+
+            .virtual-keyboard {
+                display: grid;
+            }
+
+            input[type="text"] {
+                pointer-events: auto; /* ativar o teclado do celular */
+            }
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div id="popup">
@@ -239,12 +325,13 @@
         <p><strong>Desenvolvido por Hélio Júnior</strong><br>Chefe de Seção - Tel: 61998427629 - Loja 1218</p>
     </div>
 
-    <h1>CÁLCULO DE PLU</h1>
+    <h1>DESCOBRIR ÚLTIMO DÍGITO</h1>
+    <button id="menuButton" onclick="abrirPopup()">Sobre</button>
 
     <div id="content">
         <label for="plu" title="Digite um PLU com 2 a 5 dígitos.">Digite o PLU:</label>
-        <input type="text" id="plu" pattern="[0-9]{2,5}" title="Digite um PLU com 2 a 5 dígitos." required>
-        <button id="calculateButton">Calcular</button>
+        <input type="text" id="plu" pattern="[0-9]{2,5}" title="Digite um PLU com 2 a 5 dígitos." required inputmode="numeric">
+        <button id="calculateButton">DESCOBRIR </button>
         <div id="result"></div>
         <div id="error-message" class="error-message"></div>
     </div>
@@ -252,6 +339,12 @@
     <footer>
         Desenvolvido por Hélio Júnior<br>
         Chefe de Seção - Tel: 61998427629 - Loja 1218
+        <div class="social-icons">
+            <a href="https://www.facebook.com/profile.php?id=100065719812824" target="_blank"><i class="fab fa-facebook-f"></i></a>
+            <a href="https://www.instagram.com/heliojuniior.sl/" target="_blank"><i class="fab fa-instagram"></i></a>
+            <a href="https://www.linkedin.com/in/helio-junior-1a5817328/" target="_blank"><i class="fab fa-linkedin-in"></i></a>
+            <a href="https://github.com/Heliojuniiorsl" target="_blank"><i class="fab fa-github"></i></a>
+        </div>
     </footer>
 
     <script>
@@ -270,6 +363,12 @@
         function fecharPopup() {
             popup.style.animation = 'popupOut 0.4s forwards';
             setTimeout(() => popup.style.display = 'none', 400);
+        }
+
+        // Abrir popup
+        function abrirPopup() {
+            popup.style.display = 'block';
+            popup.style.animation = 'popupIn 0.4s forwards';
         }
 
         // Evento para o botão de calcular
@@ -306,14 +405,16 @@
                     diferenca = arredondado - calculo;
                 }
 
-                resultDiv.innerHTML = `<strong>PLU:</strong> ${plu}<br><strong>Último dígito:</strong> ${diferenca}`;
+                resultDiv.innerHTML = `<strong>PLU:</strong> ${plu}<button id="copyButton" onclick="copiarResultado('${plu}${diferenca}')"><i class="fas fa-copy"></i></button><br><strong>Último dígito:</strong> ${diferenca}`;
                 resultDiv.classList.add('active'); // Mostra o resultado
                 errorMessage.innerHTML = ''; // Limpa qualquer erro
+                errorMessage.classList.remove('active'); // Oculta a mensagem de erro
                 pluInput.classList.remove('error'); // Remove o estilo de erro
             } else {
                 resultDiv.innerHTML = ''; // Limpa o resultado
                 resultDiv.classList.remove('active'); // Oculta o resultado
                 errorMessage.innerHTML = 'Só é válido PLUs entre 2 e 5 dígitos.';
+                errorMessage.classList.add('active'); // Mostra a mensagem de erro
                 pluInput.classList.add('error'); // Aplica a animação de erro
 
                 setTimeout(() => {
@@ -321,6 +422,23 @@
                 }, 500);
             }
         }
+
+        function copiarResultado(texto) {
+            navigator.clipboard.writeText(texto).then(() => {
+                const copyButton = document.getElementById('copyButton');
+                copyButton.innerHTML = '<i class="fas fa-check"></i>'; // Muda o ícone para um check
+                copyButton.classList.add('copied'); // Adiciona a classe para mudar a cor
+
+                setTimeout(() => {
+                    copyButton.innerHTML = '<i class="fas fa-copy"></i>'; // Volta o ícone original
+                    copyButton.classList.remove('copied'); // Remove a classe para voltar a cor original
+                }, 2000); // Tempo para voltar ao ícone original
+            });
+        }
+
+        // Remover funções do teclado numérico
+        function addCharacter(char) {}
+        function deleteCharacter() {}
     </script>
 </body>
 </html>
