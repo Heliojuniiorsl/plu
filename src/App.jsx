@@ -176,13 +176,13 @@ const legacyStoragePrefix = 'semVencer.';
 const temasApp = [
   {
     id: 'claro',
-    label: 'Branco',
-    description: 'Claro elegante',
+    label: 'Google claro',
+    description: 'Branco e azul',
   },
   {
     id: 'azul',
-    label: 'Azul claro',
-    description: 'Suave e profissional',
+    label: 'Google azul',
+    description: 'Azul suave',
   },
 ];
 

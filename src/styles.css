@@ -3837,3 +3837,427 @@ button {
 .validade-tabela-item + .validade-tabela-item {
   border-top-color: var(--validade-row-divider);
 }
+
+/* Google One inspired visual palette. Status colors remain unchanged. */
+:root {
+  --google-blue: #0b57d0;
+  --google-blue-hover: #0842a0;
+  --google-blue-soft: #e8f0fe;
+  --google-red: #ea4335;
+  --google-yellow: #fbbc04;
+  --google-green: #34a853;
+  --google-text: #202124;
+  --google-muted: #5f6368;
+  --google-border: #dadce0;
+  --google-surface: #ffffff;
+  --google-surface-soft: #f8f9fa;
+  --light-page-a: #ffffff;
+  --light-page-b: #ffffff;
+  --light-page-c: #f8f9fa;
+  --light-surface: #ffffff;
+  --light-surface-strong: #ffffff;
+  --light-field: #f8f9fa;
+  --light-border: #dadce0;
+  --light-text: #202124;
+  --light-muted: #5f6368;
+  --light-accent: #0b57d0;
+  --light-accent-2: #4285f4;
+  --light-primary-2: #1a73e8;
+  --light-active-a: #e8f0fe;
+  --light-active-b: #e8f0fe;
+  --light-glow-a: transparent;
+  --light-glow-b: transparent;
+  color: var(--google-text);
+  background: #ffffff;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+}
+
+:root[data-theme='azul'] {
+  --light-page-a: #ffffff;
+  --light-page-b: #f8fbff;
+  --light-page-c: #edf4ff;
+  --light-surface: #ffffff;
+  --light-surface-strong: #ffffff;
+  --light-field: #f8fbff;
+  --light-border: #d2e3fc;
+  --light-text: #202124;
+  --light-muted: #5f6368;
+  --light-accent: #0b57d0;
+  --light-accent-2: #4285f4;
+  --light-primary-2: #1a73e8;
+  --light-active-a: #e8f0fe;
+  --light-active-b: #dbe8fd;
+  --light-glow-a: transparent;
+  --light-glow-b: transparent;
+}
+
+:root body,
+:root .auth-shell,
+:root .onboarding-shell {
+  background: var(--light-page-b);
+  color: var(--google-text);
+}
+
+:root .app-header,
+:root .main-nav {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: var(--google-border);
+  color: var(--google-text);
+  box-shadow: none;
+}
+
+:root .app-header {
+  border-right: 1px solid var(--google-border);
+}
+
+:root .main-nav {
+  backdrop-filter: none;
+}
+
+:root .brand-card,
+:root .nav-status,
+:root .auth-card,
+:root .onboarding-card {
+  background: var(--google-surface);
+  border-color: var(--google-border);
+  box-shadow: 0 8px 24px rgba(60, 64, 67, 0.1);
+}
+
+:root .brand-copy h1,
+:root .brand-copy p,
+:root .nav-status strong,
+:root .page-title h2,
+:root .section-heading h3,
+:root .metric-card strong,
+:root .produto-card h3,
+:root .produto-card p,
+:root .produto-card strong,
+:root .resultado-tabela td,
+:root .validade-main strong,
+:root .validade-meta strong {
+  color: var(--google-text);
+}
+
+:root .brand-copy span,
+:root .nav-status span,
+:root .page-title span,
+:root .section-heading span,
+:root .section-heading > strong,
+:root .section-heading > svg,
+:root .heading-actions > strong,
+:root .auth-brand span,
+:root .auth-brand svg,
+:root .onboarding-copy strong,
+:root .section-selector-status span,
+:root .admin-summary span,
+:root .admin-user-main small,
+:root .plu-cell,
+:root .quick-actions a svg,
+:root .icon-button {
+  color: var(--google-blue);
+}
+
+:root .brand-copy p,
+:root .page-title p,
+:root .metric-card span,
+:root .validade-meta span,
+:root .produto-card p,
+:root .section-options button small,
+:root .session-panel span,
+:root .admin-user-main em,
+:root .resultado-info,
+:root .validade-linha-secundaria small {
+  color: var(--google-muted);
+}
+
+:root .main-nav a,
+:root .main-nav button,
+:root .main-nav a svg,
+:root .main-nav button svg {
+  color: var(--google-muted);
+}
+
+:root .main-nav a:hover,
+:root .main-nav button:hover {
+  background: var(--google-surface-soft);
+}
+
+:root .main-nav a.active {
+  background: var(--google-blue-soft);
+  color: var(--google-blue);
+  box-shadow: none;
+}
+
+:root .main-nav a.active svg {
+  color: var(--google-blue);
+}
+
+:root .main-nav button.nav-action,
+:root .primary-button,
+:root .sheet-submit,
+:root .admin-approve-button,
+:root .pending-users button {
+  background: var(--google-blue);
+  border-color: var(--google-blue);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:root .main-nav button.nav-action:hover,
+:root .primary-button:hover,
+:root .sheet-submit:hover,
+:root .admin-approve-button:hover,
+:root .pending-users button:hover {
+  background: var(--google-blue-hover);
+  border-color: var(--google-blue-hover);
+}
+
+:root .metric-card,
+:root .tool-panel,
+:root .result-panel,
+:root .search-row,
+:root .settings-panel,
+:root .bottom-sheet,
+:root .validade-tabela-item,
+:root .empty-panel .empty-state,
+:root .sector-card,
+:root .stock-summary > div,
+:root .quick-actions a,
+:root .produto-card {
+  background: var(--google-surface);
+  border-color: var(--google-border);
+  color: var(--google-text);
+  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.08);
+}
+
+:root .metric-card {
+  background: var(--google-surface-soft);
+}
+
+:root .result-panel {
+  background: var(--google-surface-soft);
+}
+
+:root .result-panel > span,
+:root .result-panel p,
+:root .empty-result,
+:root .empty-result span {
+  color: var(--google-muted);
+}
+
+:root .result-panel > strong,
+:root .empty-result strong {
+  color: var(--google-blue);
+}
+
+:root .search-field,
+:root .input-principal,
+:root .auth-form input,
+:root .sheet-form input,
+:root .validade-form input,
+:root .validade-form select,
+:root .compact-row select,
+:root .local-toggle button,
+:root .unit-toggle button,
+:root .sheet-close,
+:root .session-panel div,
+:root .detail-info-box,
+:root .section-selector-status,
+:root .empty-access {
+  background: var(--google-surface-soft);
+  border-color: var(--google-border);
+  color: var(--google-text);
+  box-shadow: none;
+}
+
+:root .input-principal:focus,
+:root .search-field:focus-within,
+:root .auth-form input:focus,
+:root .validade-form input:focus,
+:root .validade-form select:focus,
+:root .sheet-form input:focus,
+:root .compact-row select:focus {
+  border-color: var(--google-blue);
+  box-shadow: 0 0 0 3px rgba(11, 87, 208, 0.14);
+}
+
+:root .auth-tabs {
+  background: #f1f3f4;
+  border-color: var(--google-border);
+}
+
+:root .auth-tabs button {
+  color: var(--google-muted);
+}
+
+:root .auth-tabs button.active {
+  background: #ffffff;
+  color: var(--google-blue);
+  box-shadow: 0 1px 4px rgba(60, 64, 67, 0.14);
+}
+
+:root .theme-options button,
+:root .section-options button,
+:root .admin-user-card,
+:root .category-sheet-options button {
+  background: var(--google-surface-soft);
+  border-color: var(--google-border);
+  color: var(--google-muted);
+  box-shadow: none;
+}
+
+:root .theme-options button.active,
+:root .section-options button.active,
+:root .category-sheet-options button.active,
+:root .local-toggle button.active,
+:root .unit-toggle button.active {
+  background: var(--google-blue-soft);
+  border-color: #a8c7fa;
+  color: var(--google-blue);
+  box-shadow: none;
+}
+
+:root .theme-preview.theme-claro,
+:root .theme-preview.theme-azul {
+  background: conic-gradient(
+    from 45deg,
+    #4285f4 0 25%,
+    #34a853 25% 50%,
+    #fbbc04 50% 75%,
+    #ea4335 75% 100%
+  );
+}
+
+:root .view-toggle button,
+:root .filter-row button,
+:root .filter-action-button {
+  background: #ffffff;
+  border-color: var(--google-border);
+  color: var(--google-muted);
+}
+
+:root .view-toggle button.active,
+:root .view-toggle button:hover,
+:root .filter-row button.active,
+:root .filter-row button:hover,
+:root .filter-action-button.active,
+:root .filter-action-button:hover,
+:root .status-filter-chip.all.active {
+  background: var(--google-blue);
+  border-color: var(--google-blue);
+  color: #ffffff;
+}
+
+:root .results-count strong,
+:root .admin-summary,
+:root .sync-note {
+  background: var(--google-blue-soft);
+  border-color: #a8c7fa;
+  color: var(--google-blue);
+}
+
+:root .resultado-tabela thead {
+  background: var(--google-surface-soft);
+}
+
+:root .resultado-tabela th {
+  color: var(--google-blue);
+}
+
+:root .resultado-tabela td {
+  border-top-color: var(--google-border);
+}
+
+:root .resultado-tabela tbody tr:hover {
+  background: #f1f3f4;
+}
+
+:root .validade-tabela-item {
+  --validade-cell-bg: #f8f9fa;
+  --validade-cell-border: #dadce0;
+  --validade-cell-tone-bg: color-mix(in srgb, var(--tone) 12%, #ffffff);
+  --validade-row-divider: #c7c9cc;
+}
+
+:root .validade-tabela-item:hover,
+:root .validade-tabela-item:focus-visible {
+  background: color-mix(in srgb, var(--tone-soft, #e8f0fe) 55%, #ffffff);
+}
+
+:root .produto-cadastro-card {
+  background: var(--google-surface-soft);
+  border-color: var(--google-border);
+  color: var(--google-text);
+  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.1);
+}
+
+:root .produto-name-box,
+:root .produto-info-box {
+  background: #ffffff;
+  border-color: var(--google-border);
+}
+
+:root .produto-name-box h3,
+:root .produto-info-box strong {
+  color: var(--google-text);
+}
+
+:root .produto-info-box span {
+  color: var(--google-muted);
+}
+
+:root .produto-action-btn {
+  background: #ffffff;
+}
+
+:root .produto-action-btn.view,
+:root .produto-action-btn.edit {
+  color: var(--google-blue);
+  border-color: #a8c7fa;
+}
+
+:root .produto-action-btn.delete {
+  color: var(--google-red);
+  border-color: #f6aea8;
+}
+
+:root .detail-info-box.highlight,
+:root .detail-summary,
+:root .user-detail-hero {
+  background: var(--google-blue-soft);
+  border-color: #a8c7fa;
+}
+
+:root .user-logo.tone-admin {
+  background: var(--google-blue);
+}
+
+:root .user-logo.tone-approved {
+  background: var(--google-green);
+}
+
+:root .user-logo.tone-pending {
+  background: var(--google-yellow);
+  color: var(--google-text);
+}
+
+@media (max-width: 720px) {
+  :root body {
+    background: var(--light-page-b);
+  }
+
+  :root .main-nav {
+    background: rgba(255, 255, 255, 0.98);
+    border-top-color: var(--google-border);
+    box-shadow: 0 -2px 10px rgba(60, 64, 67, 0.1);
+  }
+
+  :root .main-nav button.nav-action {
+    background: var(--google-blue);
+  }
+
+  :root .main-nav a.active {
+    background: var(--google-blue-soft);
+    color: var(--google-blue);
+  }
+}
