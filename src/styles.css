@@ -1384,7 +1384,8 @@ button {
 
 .admin-user-main strong,
 .admin-user-main small,
-.admin-user-main em {
+.admin-user-main em,
+.admin-user-main time {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1407,6 +1408,12 @@ button {
   font-size: 11px;
   font-style: normal;
   font-weight: 900;
+}
+
+.admin-user-main time {
+  color: #8a94a3;
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .admin-user-status {
@@ -2390,8 +2397,10 @@ button {
 }
 
 .user-detail-sheet {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   max-height: calc(100dvh - 12px);
+  overscroll-behavior: contain;
 }
 
 .user-detail-hero {
@@ -2455,6 +2464,143 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.user-activity-history {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #dce4ee;
+}
+
+.user-activity-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.user-activity-heading div {
+  min-width: 0;
+}
+
+.user-activity-heading span {
+  display: block;
+  color: #0f766e;
+  font-size: 9px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.user-activity-heading h4 {
+  margin: 2px 0 0;
+  color: #151f2d;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.user-activity-heading > strong {
+  color: #687587;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.user-activity-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.user-activity-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid #dce4ee;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.activity-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #e6f3f1;
+  color: #0f766e;
+}
+
+.activity-content {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.activity-title {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.activity-title strong {
+  min-width: 0;
+  color: #151f2d;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.activity-title span {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #e6f3f1;
+  color: #0f766e;
+  font-size: 8px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.activity-content small {
+  color: #687587;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.activity-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.activity-details em {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 3px 6px;
+  border: 1px solid #d6e0eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #485568;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-activity-history {
+  padding: 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #687587;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .detail-actions {
@@ -3965,6 +4111,8 @@ button {
 :root .section-options button small,
 :root .session-panel span,
 :root .admin-user-main em,
+:root .admin-user-main time,
+:root .activity-content small,
 :root .resultado-info,
 :root .validade-linha-secundaria small {
   color: var(--google-muted);
@@ -4099,6 +4247,7 @@ button {
 :root .theme-options button,
 :root .section-options button,
 :root .admin-user-card,
+:root .user-activity-list li,
 :root .category-sheet-options button {
   background: var(--google-surface-soft);
   border-color: var(--google-border);
@@ -4226,6 +4375,33 @@ button {
 :root .user-detail-hero {
   background: var(--google-blue-soft);
   border-color: #a8c7fa;
+}
+
+:root .user-activity-history {
+  border-top-color: var(--google-border);
+}
+
+:root .user-activity-heading span,
+:root .user-activity-heading h4,
+:root .activity-title strong {
+  color: var(--google-text);
+}
+
+:root .user-activity-heading span {
+  color: var(--google-blue);
+}
+
+:root .activity-icon,
+:root .activity-title span {
+  background: var(--google-blue-soft);
+  color: var(--google-blue);
+}
+
+:root .activity-details em,
+:root .empty-activity-history {
+  background: #ffffff;
+  border-color: var(--google-border);
+  color: var(--google-muted);
 }
 
 :root .user-logo.tone-admin {

@@ -70,6 +70,93 @@ function normalizarUsuario(usuario) {
   };
 }
 
+function detectarOrigemAcesso() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return 'web';
+
+  const userAgent = String(navigator.userAgent || '').toLowerCase();
+  const appInstalado = window.matchMedia?.('(display-mode: standalone)')?.matches;
+  const webViewAndroid = userAgent.includes('; wv)') || userAgent.includes('version/4.0');
+
+  return appInstalado || webViewAndroid ? 'app' : 'web';
+}
+
+function sanitizarDetalhesAtividade(detalhes) {
+  if (!detalhes || typeof detalhes !== 'object') return {};
+
+  const limites = {
+    produto: 180,
+    plu: 40,
+    quantidade: 40,
+    validade: 20,
+    tipo: 20,
+    local: 80,
+  };
+
+  return Object.fromEntries(
+    Object.entries(limites)
+      .filter(([campo]) => detalhes[campo] !== undefined && detalhes[campo] !== null && detalhes[campo] !== '')
+      .map(([campo, limite]) => [campo, String(detalhes[campo]).slice(0, limite)]),
+  );
+}
+
+function normalizarEventoAtividade(atividade, rota = '') {
+  const evento = typeof atividade === 'string' ? { descricao: atividade } : atividade || {};
+
+  return {
+    acao: String(evento.acao || 'visualizacao').slice(0, 80),
+    categoria: String(evento.categoria || 'navegacao').slice(0, 40),
+    descricao: String(evento.descricao || evento.label || 'Atividade registrada').slice(0, 240),
+    rota: String(evento.rota || rota || '').slice(0, 160),
+    entidadeTipo: String(evento.entidadeTipo || '').slice(0, 60),
+    entidadeId: String(evento.entidadeId || '').slice(0, 160),
+    detalhes: sanitizarDetalhesAtividade(evento.detalhes),
+    origem: ['app', 'web'].includes(evento.origem) ? evento.origem : detectarOrigemAcesso(),
+  };
+}
+
+function normalizarLogAtividade(log) {
+  return {
+    id: log.id,
+    acao: log.acao || 'visualizacao',
+    categoria: log.categoria || 'navegacao',
+    descricao: log.descricao || 'Atividade registrada',
+    rota: log.rota || '',
+    entidadeTipo: log.entidade_tipo || '',
+    entidadeId: log.entidade_id || '',
+    detalhes: log.detalhes && typeof log.detalhes === 'object' ? log.detalhes : {},
+    origem: log.origem === 'app' ? 'app' : 'web',
+    at: log.created_at || '',
+  };
+}
+
+function tabelaAtividadesAusente(error) {
+  return /atividades_usuario|schema cache|does not exist|pgrst205/i.test(String(error?.message || ''));
+}
+
+async function inserirLogAtividade(usuario, atividade, rota = '') {
+  if (!usuario?.id || String(usuario.id).startsWith('local-')) return false;
+
+  const evento = normalizarEventoAtividade(atividade, rota);
+  const { error } = await supabase.from('atividades_usuario').insert({
+    usuario_id: usuario.id,
+    acao: evento.acao,
+    categoria: evento.categoria,
+    descricao: evento.descricao,
+    rota: evento.rota || null,
+    entidade_tipo: evento.entidadeTipo || null,
+    entidade_id: evento.entidadeId || null,
+    detalhes: evento.detalhes,
+    origem: evento.origem,
+  });
+
+  if (error) {
+    if (tabelaAtividadesAusente(error)) return false;
+    throw new Error(error.message);
+  }
+
+  return true;
+}
+
 async function garantirUsuarioRemoto(usuario) {
   exigirSupabase();
   if (!usuario) throw new Error('Sessao invalida.');
@@ -218,7 +305,16 @@ export async function cadastrarUsuario({ matricula, telefone }) {
     .single();
 
   if (error) throw new Error(error.message);
-  return normalizarUsuario(data);
+
+  const usuario = normalizarUsuario(data);
+  inserirLogAtividade(usuario, {
+    acao: 'cadastro_solicitado',
+    categoria: 'conta',
+    descricao: 'Solicitou cadastro no sistema',
+    rota: '/acesso',
+  }).catch(() => {});
+
+  return usuario;
 }
 
 export async function loginUsuario(matricula) {
@@ -238,14 +334,30 @@ export async function loginUsuario(matricula) {
 
   if (error) throw new Error(error.message);
   if (!data && matriculaLimpa === ADMIN_MATRICULA) {
+    const primeiroLoginAt = new Date().toISOString();
     const { data: adminData, error: adminError } = await supabase
       .from('usuarios')
-      .insert({ matricula: ADMIN_MATRICULA, telefone: '00000000000', admin: true, aprovado: true })
-      .select('id, matricula, telefone, admin, aprovado')
+      .insert({
+        matricula: ADMIN_MATRICULA,
+        telefone: '00000000000',
+        admin: true,
+        aprovado: true,
+        last_login_at: primeiroLoginAt,
+      })
+      .select('id, matricula, telefone, admin, aprovado, last_login_at')
       .single();
 
     if (adminError) throw new Error(adminError.message);
-    return normalizarUsuario(adminData);
+
+    const admin = normalizarUsuario(adminData);
+    inserirLogAtividade(admin, {
+      acao: 'login',
+      categoria: 'conta',
+      descricao: 'Entrou no sistema',
+      rota: '/',
+    }).catch(() => {});
+
+    return admin;
   }
   if (!data) throw new Error('Matricula nao cadastrada.');
 
@@ -253,12 +365,24 @@ export async function loginUsuario(matricula) {
   if (precisaAdmin) {
     await supabase.from('usuarios').update({ admin: true, aprovado: true }).eq('id', data.id);
   }
-  await supabase.from('usuarios').update({ last_login_at: new Date().toISOString() }).eq('id', data.id);
+  const loginAt = new Date().toISOString();
+  await supabase.from('usuarios').update({ last_login_at: loginAt }).eq('id', data.id);
 
-  const usuarioNormalizado = normalizarUsuario({ ...data, admin: data.admin || matriculaLimpa === ADMIN_MATRICULA });
+  const usuarioNormalizado = normalizarUsuario({
+    ...data,
+    admin: data.admin || matriculaLimpa === ADMIN_MATRICULA,
+    last_login_at: loginAt,
+  });
   if (!usuarioNormalizado.admin && !usuarioNormalizado.aprovado) {
     throw new Error(`Cadastro pendente. Entre em contato com ${CONTATO_LIBERACAO} para liberar o acesso.`);
   }
+
+  inserirLogAtividade(usuarioNormalizado, {
+    acao: 'login',
+    categoria: 'conta',
+    descricao: 'Entrou no sistema',
+    rota: '/',
+  }).catch(() => {});
 
   return usuarioNormalizado;
 }
@@ -277,7 +401,7 @@ export async function carregarUsuariosPendentes() {
   return (data || []).map(normalizarUsuario);
 }
 
-function resumoAtividadeUsuario(usuario, validades = []) {
+function resumoAtividadeUsuario(usuario, validades = [], logs = []) {
   const itens = validades
     .filter((item) => item.usuario_id === usuario.id)
     .sort((a, b) => {
@@ -290,6 +414,11 @@ function resumoAtividadeUsuario(usuario, validades = []) {
     usuario.last_activity_label || usuario.lastActivityLabel || (ultimo ? `Cadastrou ${ultimo.produto}` : 'Sem atividade recente');
   const atividadeAt =
     usuario.last_activity_at || usuario.lastActivityAt || usuario.last_login_at || usuario.lastLoginAt || ultimo?.updated_at || ultimo?.created_at || '';
+  const historico = logs
+    .filter((log) => log.usuario_id === usuario.id)
+    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    .map(normalizarLogAtividade);
+  const ultimoLog = historico[0] || null;
 
   return {
     totalProdutos: itens.length,
@@ -297,9 +426,16 @@ function resumoAtividadeUsuario(usuario, validades = []) {
     ultimoPlu: ultimo?.plu || '',
     ultimaValidade: ultimo?.validade || '',
     ultimaMovimentacaoAt: ultimo?.updated_at || ultimo?.created_at || '',
-    label: atividadeLabel,
-    at: atividadeAt,
-    rota: usuario.last_route || usuario.lastRoute || '',
+    totalAcoes: historico.length,
+    totalLogins: historico.filter((log) => log.acao === 'login').length,
+    totalCadastros: historico.filter((log) => log.acao === 'produto_cadastrado').length,
+    totalEdicoes: historico.filter((log) => log.acao === 'produto_editado').length,
+    totalExclusoes: historico.filter((log) => log.acao === 'produto_excluido').length,
+    label: ultimoLog?.descricao || atividadeLabel,
+    at: ultimoLog?.at || atividadeAt,
+    rota: ultimoLog?.rota || usuario.last_route || usuario.lastRoute || '',
+    origem: ultimoLog?.origem || '',
+    historico,
   };
 }
 
@@ -325,6 +461,7 @@ export async function carregarUsuariosAdmin() {
   const usuarios = await carregarUsuariosRemotosAdmin();
   const ids = usuarios.map((usuario) => usuario.id).filter(Boolean);
   let validades = [];
+  let logs = [];
 
   if (ids.length > 0) {
     const { data, error } = await supabase
@@ -334,13 +471,26 @@ export async function carregarUsuariosAdmin() {
 
     if (error) throw new Error(error.message);
     validades = data || [];
+
+    const consultaLogs = await supabase
+      .from('atividades_usuario')
+      .select('id, usuario_id, acao, categoria, descricao, rota, entidade_tipo, entidade_id, detalhes, origem, created_at')
+      .in('usuario_id', ids)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (consultaLogs.error && !tabelaAtividadesAusente(consultaLogs.error)) {
+      throw new Error(consultaLogs.error.message);
+    }
+
+    logs = consultaLogs.data || [];
   }
 
   return usuarios.map((usuario) => {
     const normalizado = normalizarUsuario(usuario);
     return {
       ...normalizado,
-      atividade: resumoAtividadeUsuario(usuario, validades),
+      atividade: resumoAtividadeUsuario(usuario, validades, logs),
     };
   });
 }
@@ -396,16 +546,17 @@ export async function registrarAtividadeUsuario(usuario, atividade, rota = '') {
   exigirSupabase();
 
   const agora = new Date().toISOString();
+  const evento = normalizarEventoAtividade(atividade, rota);
   const dadosAtividade = {
-    lastActivityLabel: atividade,
+    lastActivityLabel: evento.descricao,
     lastActivityAt: agora,
-    lastRoute: rota,
+    lastRoute: evento.rota,
   };
 
   const payload = {
-    last_activity_label: atividade,
+    last_activity_label: evento.descricao,
     last_activity_at: agora,
-    last_route: rota,
+    last_route: evento.rota,
   };
 
   const filtro = usuario.id && !String(usuario.id).startsWith('local-') ? { coluna: 'id', valor: usuario.id } : { coluna: 'matricula', valor: somenteDigitos(usuario.matricula) };
@@ -414,6 +565,10 @@ export async function registrarAtividadeUsuario(usuario, atividade, rota = '') {
   if (error && !/last_activity_|last_route/i.test(error.message)) {
     throw new Error(error.message);
   }
+
+  await inserirLogAtividade(usuario, evento, evento.rota);
+
+  return dadosAtividade;
 }
 
 export async function aprovarUsuario(matricula) {
@@ -433,7 +588,16 @@ export async function aprovarUsuario(matricula) {
     .single();
 
   if (error) throw new Error(error.message);
-  return normalizarUsuario(data);
+
+  const usuario = normalizarUsuario(data);
+  inserirLogAtividade(usuario, {
+    acao: 'cadastro_aprovado',
+    categoria: 'conta',
+    descricao: 'Cadastro aprovado pelo administrador',
+    rota: '/configuracao',
+  }).catch(() => {});
+
+  return usuario;
 }
 
 export async function carregarDadosRemotos(usuario) {

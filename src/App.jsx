@@ -385,18 +385,42 @@ function usuarioPodeAcessar(usuario) {
 
 function descreverAtividadeUsuario(rota, cadastroAberto, cadastroEdicaoId, produtoDetalhe) {
   if (cadastroAberto) {
-    return cadastroEdicaoId ? 'Editando produto cadastrado' : 'Cadastrando produto';
+    return {
+      acao: cadastroEdicaoId ? 'produto_edicao_aberta' : 'produto_cadastro_aberto',
+      categoria: 'produto',
+      descricao: cadastroEdicaoId ? 'Abriu a edicao de um produto' : 'Abriu o cadastro de produto',
+      entidadeTipo: cadastroEdicaoId ? 'validade' : '',
+      entidadeId: cadastroEdicaoId || '',
+    };
   }
 
   if (produtoDetalhe) {
-    return 'Visualizando produto cadastrado';
+    return {
+      acao: 'produto_visualizado',
+      categoria: 'produto',
+      descricao: `Visualizou ${produtoDetalhe.produto}`,
+      entidadeTipo: 'validade',
+      entidadeId: produtoDetalhe.id,
+      detalhes: {
+        produto: produtoDetalhe.produto,
+        plu: produtoDetalhe.plu,
+        validade: produtoDetalhe.validade,
+        quantidade: produtoDetalhe.quantidade,
+      },
+    };
   }
 
-  if (rota === '/plu') return 'Calculando PLU';
-  if (rota === '/pesquisa-plu') return 'Pesquisando PLU';
-  if (rota === '/configuracao') return 'Ajustando configuracoes';
+  if (rota === '/plu') {
+    return { acao: 'pagina_visualizada', categoria: 'navegacao', descricao: 'Acessou a calculadora de PLU' };
+  }
+  if (rota === '/pesquisa-plu') {
+    return { acao: 'pagina_visualizada', categoria: 'navegacao', descricao: 'Acessou a pesquisa de PLU' };
+  }
+  if (rota === '/configuracao') {
+    return { acao: 'pagina_visualizada', categoria: 'navegacao', descricao: 'Acessou as configuracoes' };
+  }
 
-  return 'Visualizando validades';
+  return { acao: 'pagina_visualizada', categoria: 'navegacao', descricao: 'Acessou as validades' };
 }
 
 function formatarData(dataISO) {
@@ -548,6 +572,7 @@ function App() {
   const [produtosBase, setProdutosBase] = useState([]);
   const [validades, setValidades] = useState([]);
   const atualizacaoRemotaRef = useRef(false);
+  const ultimaAtividadeRef = useRef({ chave: '', at: 0 });
   const [filtroValidade, setFiltroValidade] = useState('todos');
   const [buscaValidade, setBuscaValidade] = useState('');
   const [cadastroAberto, setCadastroAberto] = useState(false);
@@ -699,7 +724,20 @@ function App() {
     }
 
     const atividade = descreverAtividadeUsuario(rotaAtual, cadastroAberto, cadastroEdicaoId, produtoDetalhe);
+    const chaveAtividade = [
+      usuarioAtual.id,
+      atividade.acao,
+      rotaAtual,
+      atividade.entidadeId || '',
+    ].join(':');
+    const agora = Date.now();
+
+    if (ultimaAtividadeRef.current.chave === chaveAtividade && agora - ultimaAtividadeRef.current.at < 30000) {
+      return undefined;
+    }
+
     const timeout = window.setTimeout(() => {
+      ultimaAtividadeRef.current = { chave: chaveAtividade, at: Date.now() };
       registrarAtividadeUsuario(usuarioAtual, atividade, rotaAtual).catch((error) => {
         console.warn('Nao foi possivel registrar atividade', error);
       });
@@ -1128,14 +1166,16 @@ function App() {
     const pluFinal = codigoLimpo || 'Sem PLU';
     const quantidadeFinal = formatarQuantidade(novoItem.quantidade, novoItem.unidade);
     const tipoFinal = novoItem.tipo ? normalizarTipoProduto(novoItem.tipo) : inferirTipoConservacao(novoItem.produto);
+    const produtoFinal = novoItem.produto.trim();
 
     if (cadastroEdicaoId) {
+      const itemId = cadastroEdicaoId;
       setValidades((itens) =>
         itens.map((item) =>
-          item.id === cadastroEdicaoId
+          item.id === itemId
             ? {
                 ...item,
-                produto: novoItem.produto.trim(),
+                produto: produtoFinal,
                 plu: pluFinal,
                 setor: novoItem.setor,
                 tipo: tipoFinal,
@@ -1145,15 +1185,35 @@ function App() {
             : item,
         ),
       );
+      registrarAtividadeUsuario(
+        usuarioAtual,
+        {
+          acao: 'produto_editado',
+          categoria: 'produto',
+          descricao: `Editou ${produtoFinal}`,
+          entidadeTipo: 'validade',
+          entidadeId: itemId,
+          detalhes: {
+            produto: produtoFinal,
+            plu: pluFinal,
+            quantidade: quantidadeFinal,
+            validade: novoItem.validade,
+            tipo: tipoFinal,
+            local: novoItem.setor,
+          },
+        },
+        rotaAtual,
+      ).catch((error) => console.warn('Nao foi possivel registrar edicao', error));
       setCadastroAberto(false);
       limparCadastro();
       return;
     }
 
+    const novoId = `validade-${Date.now()}`;
     setValidades((itens) => [
       {
-        id: `validade-${Date.now()}`,
-        produto: novoItem.produto.trim(),
+        id: novoId,
+        produto: produtoFinal,
         plu: pluFinal,
         categoria: 'Cadastro',
         setor: novoItem.setor,
@@ -1168,15 +1228,57 @@ function App() {
       ...itens,
     ]);
 
+    registrarAtividadeUsuario(
+      usuarioAtual,
+      {
+        acao: 'produto_cadastrado',
+        categoria: 'produto',
+        descricao: `Cadastrou ${produtoFinal}`,
+        entidadeTipo: 'validade',
+        entidadeId: novoId,
+        detalhes: {
+          produto: produtoFinal,
+          plu: pluFinal,
+          quantidade: quantidadeFinal,
+          validade: novoItem.validade,
+          tipo: tipoFinal,
+          local: novoItem.setor,
+        },
+      },
+      rotaAtual,
+    ).catch((error) => console.warn('Nao foi possivel registrar cadastro', error));
+
     setCadastroAberto(false);
     limparCadastro();
   }
 
   function excluirProduto(id) {
+    const itemExcluido = validades.find((item) => item.id === id);
     setValidades((itens) => itens.filter((item) => item.id !== id));
     removerValidadeRemota(id).catch((error) => {
       console.warn('Nao foi possivel remover do Supabase', error);
     });
+    registrarAtividadeUsuario(
+      usuarioAtual,
+      {
+        acao: 'produto_excluido',
+        categoria: 'produto',
+        descricao: itemExcluido ? `Excluiu ${itemExcluido.produto}` : 'Excluiu um produto',
+        entidadeTipo: 'validade',
+        entidadeId: id,
+        detalhes: itemExcluido
+          ? {
+              produto: itemExcluido.produto,
+              plu: itemExcluido.plu,
+              quantidade: itemExcluido.quantidade,
+              validade: itemExcluido.validade,
+              tipo: itemExcluido.tipo,
+              local: itemExcluido.setor,
+            }
+          : {},
+      },
+      rotaAtual,
+    ).catch((error) => console.warn('Nao foi possivel registrar exclusao', error));
   }
 
   function alternarSecaoProduto(secao) {
@@ -2210,6 +2312,39 @@ function tomUsuarioAdmin(usuario) {
   return 'pending';
 }
 
+function rotuloCategoriaAtividade(categoria) {
+  if (categoria === 'produto') return 'Produto';
+  if (categoria === 'conta') return 'Conta';
+  if (categoria === 'configuracao') return 'Configuracao';
+  return 'Navegacao';
+}
+
+function rotuloOrigemAtividade(origem) {
+  return origem === 'app' ? 'Aplicativo' : 'Site';
+}
+
+function rotuloRotaAtividade(rota) {
+  if (!rota || rota === '/') return 'Validades';
+  if (rota === '/plu') return 'PLU';
+  if (rota === '/pesquisa-plu') return 'Pesquisa';
+  if (rota === '/configuracao') return 'Configuracao';
+  return rota;
+}
+
+function detalhesLogAtividade(log) {
+  const detalhes = log?.detalhes || {};
+  const itens = [];
+
+  if (detalhes.produto) itens.push(detalhes.produto);
+  if (detalhes.plu && detalhes.plu !== 'Sem PLU') itens.push(`PLU ${detalhes.plu}`);
+  if (detalhes.quantidade) itens.push(`Qtd. ${detalhes.quantidade}`);
+  if (detalhes.validade) itens.push(`Val. ${formatarData(detalhes.validade)}`);
+  if (detalhes.tipo) itens.push(detalhes.tipo);
+  if (detalhes.local) itens.push(detalhes.local);
+
+  return itens;
+}
+
 function UsuarioLogo({ usuario }) {
   const matricula = usuario?.matricula || '';
   const iniciais = matricula.slice(-2) || 'U';
@@ -2238,6 +2373,7 @@ function UsuarioAdminCard({ usuario, sincronizando, onOpen, onApprove }) {
         <strong>{usuario.matricula}</strong>
         <small>{formatarTelefone(usuario.telefone) || 'Telefone nao informado'}</small>
         <em>{usuario.atividade?.label || 'Sem atividade recente'}</em>
+        <time>{formatarDataHora(usuario.atividade?.at)}</time>
       </span>
       <span className={`admin-user-status tone-${tomUsuarioAdmin(usuario)}`}>{statusUsuarioAdmin(usuario)}</span>
       {pendente && (
@@ -2260,6 +2396,7 @@ function UsuarioAdminCard({ usuario, sincronizando, onOpen, onApprove }) {
 function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove }) {
   const pendente = !usuario.admin && !usuario.aprovado;
   const atividade = usuario.atividade || {};
+  const historico = Array.isArray(atividade.historico) ? atividade.historico.slice(0, 12) : [];
 
   return (
     <div className="bottom-sheet-backdrop" role="presentation" onClick={onClose}>
@@ -2295,12 +2432,64 @@ function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove }
           <DetailBox label="Telefone" value={formatarTelefone(usuario.telefone)} destaque />
           <DetailBox label="Ultimo login" value={formatarDataHora(usuario.lastLoginAt)} />
           <DetailBox label="Cadastrado em" value={formatarDataHora(usuario.createdAt)} />
-          <DetailBox label="Produtos cadastrados" value={atividade.totalProdutos ?? 0} />
+          <DetailBox label="Produtos atuais" value={atividade.totalProdutos ?? 0} />
+          <DetailBox label="Logs recentes" value={atividade.totalAcoes ?? 0} />
+          <DetailBox label="Logins recentes" value={atividade.totalLogins ?? 0} />
+          <DetailBox label="Cadastros recentes" value={atividade.totalCadastros ?? 0} />
+          <DetailBox label="Edicoes recentes" value={atividade.totalEdicoes ?? 0} />
+          <DetailBox label="Exclusoes recentes" value={atividade.totalExclusoes ?? 0} />
+          <DetailBox label="Origem recente" value={atividade.origem ? rotuloOrigemAtividade(atividade.origem) : 'Sem registro'} />
           <DetailBox label="Rota" value={atividade.rota || usuario.lastRoute || 'Sem rota'} />
           <DetailBox label="Ultimo produto" value={atividade.ultimoProduto || 'Nenhum produto'} wide />
           <DetailBox label="PLU / EAN" value={atividade.ultimoPlu || 'Sem PLU'} />
           <DetailBox label="Validade" value={atividade.ultimaValidade ? formatarData(atividade.ultimaValidade) : 'Sem validade'} />
         </div>
+
+        <section className="user-activity-history" aria-labelledby="historico-usuario-titulo">
+          <div className="user-activity-heading">
+            <div>
+              <span>Logs</span>
+              <h4 id="historico-usuario-titulo">Atividade recente</h4>
+            </div>
+            <strong>{historico.length} exibida(s)</strong>
+          </div>
+
+          {historico.length > 0 ? (
+            <ol className="user-activity-list">
+              {historico.map((log) => {
+                const detalhes = detalhesLogAtividade(log);
+
+                return (
+                  <li key={log.id} className={`activity-${log.categoria}`}>
+                    <span className="activity-icon" aria-hidden="true">
+                      <Clock3 size={15} />
+                    </span>
+                    <div className="activity-content">
+                      <div className="activity-title">
+                        <strong>{log.descricao}</strong>
+                        <span>{rotuloCategoriaAtividade(log.categoria)}</span>
+                      </div>
+                      <small>
+                        {formatarDataHora(log.at)} · {rotuloOrigemAtividade(log.origem)} · {rotuloRotaAtividade(log.rota)}
+                      </small>
+                      {detalhes.length > 0 && (
+                        <div className="activity-details">
+                          {detalhes.map((detalhe) => (
+                            <em key={detalhe}>{detalhe}</em>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <div className="empty-activity-history">
+              O historico comeca a aparecer depois que a tabela de logs for atualizada no Supabase.
+            </div>
+          )}
+        </section>
 
         <div className="detail-actions">
           {pendente && (
