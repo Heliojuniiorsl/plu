@@ -172,6 +172,7 @@ const statusOrdem = [
 ];
 
 const legacyStoragePrefix = 'semVencer.';
+const sessaoUsuarioStorageKey = 'semvencer.sessao.usuario';
 
 const temasApp = [
   {
@@ -383,6 +384,32 @@ function usuarioPodeAcessar(usuario) {
   return Boolean(usuario?.admin || usuario?.aprovado);
 }
 
+function salvarSessaoUsuario(usuario) {
+  try {
+    const matricula = somenteNumeros(usuario?.matricula);
+    if (!matricula || !usuarioPodeAcessar(usuario)) return;
+
+    const id = String(usuario?.id || '');
+    const sessao = {
+      id: id && !id.startsWith('local-') ? id : '',
+      matricula,
+      salvoEm: new Date().toISOString(),
+    };
+
+    window.localStorage.setItem(sessaoUsuarioStorageKey, JSON.stringify(sessao));
+  } catch (error) {
+    console.warn('Nao foi possivel salvar sessao do usuario', error);
+  }
+}
+
+function removerSessaoUsuario() {
+  try {
+    window.localStorage.removeItem(sessaoUsuarioStorageKey);
+  } catch (error) {
+    console.warn('Nao foi possivel limpar sessao do usuario', error);
+  }
+}
+
 function descreverAtividadeUsuario(rota, cadastroAberto, cadastroEdicaoId, produtoDetalhe) {
   if (cadastroAberto) {
     return {
@@ -546,7 +573,33 @@ function encontrarProdutosProvaveis(listaProdutos, nome, codigo, limite = 12) {
 }
 
 function carregarUsuarioInicial() {
-  return null;
+  try {
+    const sessaoSalva = window.localStorage.getItem(sessaoUsuarioStorageKey);
+    if (!sessaoSalva) return null;
+
+    const sessao = JSON.parse(sessaoSalva);
+    const matricula = somenteNumeros(sessao?.matricula);
+    if (!matricula) {
+      removerSessaoUsuario();
+      return null;
+    }
+
+    const id = String(sessao?.id || '');
+
+    return {
+      id: id && !id.startsWith('local-') ? id : `local-${matricula}`,
+      matricula,
+      telefone: '',
+      admin: false,
+      aprovado: true,
+      createdAt: '',
+      lastLoginAt: '',
+      sessaoRestaurada: true,
+    };
+  } catch (error) {
+    removerSessaoUsuario();
+    return null;
+  }
 }
 
 function App() {
@@ -619,6 +672,12 @@ function App() {
   }, [temaAtual]);
 
   useEffect(() => {
+    if (usuarioAtual && usuarioPodeAcessar(usuarioAtual)) {
+      salvarSessaoUsuario(usuarioAtual);
+    }
+  }, [usuarioAtual]);
+
+  useEffect(() => {
     setSecoesSelecionadas(carregarSecoesDoUsuario(usuarioAtual));
     setSecoesConfiguradas(carregarSecoesConfiguradasUsuario(usuarioAtual));
   }, [usuarioAtual?.matricula]);
@@ -677,6 +736,7 @@ function App() {
       return;
     }
 
+    removerSessaoUsuario();
     setUsuarioAtual(null);
     setValidades([]);
     setUsuarioDadosChave('');
@@ -771,7 +831,13 @@ function App() {
 
         if (cancelado) return;
 
-        if (dados.usuario && dados.usuario.id !== usuarioAtual.id) {
+        if (
+          dados.usuario &&
+          (dados.usuario.id !== usuarioAtual.id ||
+            dados.usuario.admin !== usuarioAtual.admin ||
+            dados.usuario.aprovado !== usuarioAtual.aprovado ||
+            dados.usuario.telefone !== usuarioAtual.telefone)
+        ) {
           setUsuarioAtual(dados.usuario);
         }
         setSecoesSelecionadas(normalizarSecoesSelecionadas(preferencias.secoesSelecionadas));
@@ -782,6 +848,7 @@ function App() {
         setDadosRemotosCarregados(true);
       } catch (error) {
         if (!cancelado) {
+          removerSessaoUsuario();
           setUsuarioAtual(null);
           setValidades([]);
           setUsuarioDadosChave('');
@@ -1007,6 +1074,7 @@ function App() {
 
     try {
       const usuario = await loginUsuario(matricula);
+      salvarSessaoUsuario(usuario);
       setUsuarioAtual(usuario);
       setValidades([]);
       setUsuarioDadosChave('');
@@ -1030,6 +1098,7 @@ function App() {
         return;
       }
 
+      salvarSessaoUsuario(usuario);
       setUsuarioAtual(usuario);
       setValidades([]);
       setUsuarioDadosChave('');
@@ -1042,6 +1111,7 @@ function App() {
   }
 
   function sair() {
+    removerSessaoUsuario();
     setUsuarioAtual(null);
     setValidades([]);
     setUsuarioDadosChave('');
