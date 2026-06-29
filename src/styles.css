@@ -1664,6 +1664,8 @@ button {
 
 .results-count {
   display: flex;
+  align-items: center;
+  gap: 8px;
   justify-content: flex-end;
   margin-bottom: 10px;
 }
@@ -1679,6 +1681,31 @@ button {
   color: #0f766e;
   font-size: 13px;
   font-weight: 1000;
+}
+
+.results-count span {
+  color: #687587;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.load-more-button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 1px solid #c9d3df;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #151f2d;
+  font-size: 14px;
+  font-weight: 1000;
+  box-shadow: 0 8px 20px rgba(24, 33, 47, 0.06);
+}
+
+.load-more-button:hover {
+  border-color: #151f2d;
+  background: #f8fafc;
 }
 
 .status-summary {
@@ -4279,7 +4306,8 @@ button {
 
 :root .view-toggle button,
 :root .filter-row button,
-:root .filter-action-button {
+:root .filter-action-button,
+:root .load-more-button {
   background: #ffffff;
   border-color: var(--google-border);
   color: var(--google-muted);
@@ -4291,6 +4319,7 @@ button {
 :root .filter-row button:hover,
 :root .filter-action-button.active,
 :root .filter-action-button:hover,
+:root .load-more-button:hover,
 :root .status-filter-chip.all.active {
   background: var(--google-blue);
   border-color: var(--google-blue);
@@ -4303,6 +4332,10 @@ button {
   background: var(--google-blue-soft);
   border-color: #a8c7fa;
   color: var(--google-blue);
+}
+
+:root .results-count span {
+  color: var(--google-muted);
 }
 
 :root .resultado-tabela thead {

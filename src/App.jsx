@@ -95,6 +95,9 @@ const navegacao = [
   { path: '/configuracao', label: 'Config', icon: Settings },
 ];
 
+const quantidadeInicialPesquisaPlu = 60;
+const quantidadeIncrementoPesquisaPlu = 60;
+
 const statusConfig = {
   vencido: {
     label: 'Vencidos',
@@ -1789,8 +1792,37 @@ function PesquisaPluPage({
   setVisualizacao,
 }) {
   const [categoriasAberto, setCategoriasAberto] = useState(false);
+  const [limiteResultados, setLimiteResultados] = useState(quantidadeInicialPesquisaPlu);
   const categoriaAtiva = categoria || 'Todas';
   const totalResultadoTexto = `${resultados.length} PLU ${resultados.length === 1 ? 'encontrado' : 'encontrados'}`;
+  const resultadosVisiveis = useMemo(
+    () => resultados.slice(0, limiteResultados),
+    [limiteResultados, resultados],
+  );
+  const temMaisResultados = resultadosVisiveis.length < resultados.length;
+  const totalVisivelTexto = temMaisResultados
+    ? `Mostrando ${resultadosVisiveis.length} de ${resultados.length}`
+    : totalResultadoTexto;
+
+  useEffect(() => {
+    setLimiteResultados(quantidadeInicialPesquisaPlu);
+  }, [categoriaAtiva, termoPesquisa, visualizacao]);
+
+  function atualizarTermoPesquisa(valor) {
+    setLimiteResultados(quantidadeInicialPesquisaPlu);
+    setTermoPesquisa(valor);
+  }
+
+  function atualizarCategoria(item) {
+    setLimiteResultados(quantidadeInicialPesquisaPlu);
+    setCategoria(item);
+    setCategoriasAberto(false);
+  }
+
+  function atualizarVisualizacao(tipo) {
+    setLimiteResultados(quantidadeInicialPesquisaPlu);
+    setVisualizacao(tipo);
+  }
 
   return (
     <div className="page-grid">
@@ -1801,7 +1833,7 @@ function PesquisaPluPage({
             <input
               value={termoPesquisa}
               placeholder="Ex: frango, 789, carne moída"
-              onChange={(event) => setTermoPesquisa(event.target.value)}
+              onChange={(event) => atualizarTermoPesquisa(event.target.value)}
             />
           </div>
 
@@ -1809,14 +1841,14 @@ function PesquisaPluPage({
             <div className="view-toggle">
               <button
                 className={visualizacao === 'cards' ? 'active' : ''}
-                onClick={() => setVisualizacao('cards')}
+                onClick={() => atualizarVisualizacao('cards')}
                 title="Visualizar como cards"
               >
                 <Grid3x3 size={18} />
               </button>
               <button
                 className={visualizacao === 'tabela' ? 'active' : ''}
-                onClick={() => setVisualizacao('tabela')}
+                onClick={() => atualizarVisualizacao('tabela')}
                 title="Visualizar como tabela"
               >
                 <List size={18} />
@@ -1840,10 +1872,7 @@ function PesquisaPluPage({
         <CategoriaFiltroSheet
           categorias={categorias}
           categoriaAtual={categoriaAtiva}
-          onSelect={(item) => {
-            setCategoria(item);
-            setCategoriasAberto(false);
-          }}
+          onSelect={atualizarCategoria}
           onClose={() => setCategoriasAberto(false)}
         />
       )}
@@ -1851,16 +1880,27 @@ function PesquisaPluPage({
       <section className="work-panel">
         <div className="results-count">
           <strong>{totalResultadoTexto}</strong>
+          {temMaisResultados && <span>{totalVisivelTexto}</span>}
         </div>
 
         {resultados.length > 0 ? (
           visualizacao === 'cards' ? (
-            <ResultadoCards produtos={resultados} />
+            <ResultadoCards produtos={resultadosVisiveis} total={resultados.length} />
           ) : (
-            <ResultadoTabela produtos={resultados} />
+            <ResultadoTabela produtos={resultadosVisiveis} total={resultados.length} />
           )
         ) : (
           <div className="empty-state">Nenhum PLU encontrado nessa pesquisa.</div>
+        )}
+
+        {temMaisResultados && (
+          <button
+            className="load-more-button"
+            type="button"
+            onClick={() => setLimiteResultados((limite) => limite + quantidadeIncrementoPesquisaPlu)}
+          >
+            Mostrar mais {Math.min(quantidadeIncrementoPesquisaPlu, resultados.length - resultadosVisiveis.length)} PLU
+          </button>
         )}
       </section>
     </div>

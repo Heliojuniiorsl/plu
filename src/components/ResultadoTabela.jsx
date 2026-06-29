@@ -2,7 +2,7 @@ import { CheckCircle2, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { copiarTexto } from '../utils/clipboard';
 
-export default function ResultadoTabela({ produtos }) {
+export default function ResultadoTabela({ produtos, total = produtos.length }) {
   const [linhaCopiada, setLinhaCopiada] = useState(null);
 
   async function copiarPlu(plu) {
@@ -51,7 +51,7 @@ export default function ResultadoTabela({ produtos }) {
           </tbody>
         </table>
       </div>
-      <p className="resultado-info">{produtos.length} produtos encontrados</p>
+      <p className="resultado-info">Mostrando {produtos.length} de {total}</p>
     </div>
   );
 }
