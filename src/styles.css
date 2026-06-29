@@ -968,6 +968,22 @@ button {
   min-height: 50px;
 }
 
+.auth-logout-button {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.auth-logout-button:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
 .auth-submit:disabled {
   opacity: 0.72;
   cursor: wait;

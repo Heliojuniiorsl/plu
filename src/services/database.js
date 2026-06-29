@@ -163,13 +163,36 @@ async function garantirUsuarioRemoto(usuario) {
 
   const matricula = somenteDigitos(usuario.matricula);
   const idRemoto = usuario.id && !String(usuario.id).startsWith('local-') ? usuario.id : '';
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('id, matricula, telefone, admin, aprovado')
-    .eq(idRemoto ? 'id' : 'matricula', idRemoto || matricula)
-    .maybeSingle();
+  const idValido = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idRemoto);
 
-  if (error) throw new Error(error.message);
+  let data = null;
+
+  if (idValido) {
+    const consultaPorId = await supabase
+      .from('usuarios')
+      .select('id, matricula, telefone, admin, aprovado')
+      .eq('id', idRemoto)
+      .maybeSingle();
+
+    if (consultaPorId.error) throw new Error(consultaPorId.error.message);
+    data = consultaPorId.data;
+
+    if (data && matricula && somenteDigitos(data.matricula) !== matricula) {
+      data = null;
+    }
+  }
+
+  if (!data && matricula) {
+    const consultaPorMatricula = await supabase
+      .from('usuarios')
+      .select('id, matricula, telefone, admin, aprovado')
+      .eq('matricula', matricula)
+      .maybeSingle();
+
+    if (consultaPorMatricula.error) throw new Error(consultaPorMatricula.error.message);
+    data = consultaPorMatricula.data;
+  }
+
   if (!data) throw new Error('Sessao local nao encontrada no Supabase. Cadastre a matricula e aguarde a aprovacao do admin.');
 
   const usuarioRemoto = normalizarUsuario(data);

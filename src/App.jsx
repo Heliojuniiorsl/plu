@@ -413,6 +413,18 @@ function removerSessaoUsuario() {
   }
 }
 
+function erroExigeNovoLogin(error) {
+  const mensagem = normalizarTexto(error?.message || error);
+
+  return (
+    mensagem.includes('sessao invalida') ||
+    mensagem.includes('sessao local nao encontrada') ||
+    mensagem.includes('cadastro pendente') ||
+    mensagem.includes('matricula nao cadastrada') ||
+    mensagem.includes('aguarde a aprovacao')
+  );
+}
+
 function descreverAtividadeUsuario(rota, cadastroAberto, cadastroEdicaoId, produtoDetalhe) {
   if (cadastroAberto) {
     return {
@@ -612,6 +624,7 @@ function App() {
   const [authErro, setAuthErro] = useState('');
   const [authMensagem, setAuthMensagem] = useState('');
   const [sincronizando, setSincronizando] = useState(false);
+  const [tentativaSincronizacao, setTentativaSincronizacao] = useState(0);
   const [dadosRemotosCarregados, setDadosRemotosCarregados] = useState(false);
   const [usuarioDadosChave, setUsuarioDadosChave] = useState('');
   const [secoesSelecionadas, setSecoesSelecionadas] = useState(() => carregarSecoesDoUsuario(carregarUsuarioInicial()));
@@ -851,12 +864,19 @@ function App() {
         setDadosRemotosCarregados(true);
       } catch (error) {
         if (!cancelado) {
-          removerSessaoUsuario();
-          setUsuarioAtual(null);
-          setValidades([]);
-          setUsuarioDadosChave('');
-          setDadosRemotosCarregados(false);
-          setAuthErro(error.message || 'Nao foi possivel validar a sessao no Supabase.');
+          if (erroExigeNovoLogin(error)) {
+            removerSessaoUsuario();
+            setUsuarioAtual(null);
+            setValidades([]);
+            setUsuarioDadosChave('');
+            setDadosRemotosCarregados(false);
+            setAuthErro(error.message || 'Nao foi possivel validar a sessao no Supabase.');
+          } else {
+            salvarSessaoUsuario(usuarioAtual);
+            setUsuarioDadosChave('');
+            setDadosRemotosCarregados(false);
+            setAuthErro('Nao foi possivel sincronizar agora. Sua sessao continua salva; tente novamente.');
+          }
         }
       } finally {
         if (!cancelado) {
@@ -870,7 +890,7 @@ function App() {
     return () => {
       cancelado = true;
     };
-  }, [dadosRemotosCarregados, temaAtual, usuarioAtual]);
+  }, [dadosRemotosCarregados, temaAtual, tentativaSincronizacao, usuarioAtual]);
 
   useEffect(() => {
     if (!cadastroAberto && !produtoDetalhe && !usuarioAdminSelecionado) {
@@ -1119,6 +1139,13 @@ function App() {
     setValidades([]);
     setUsuarioDadosChave('');
     setDadosRemotosCarregados(false);
+  }
+
+  function tentarSincronizarSessao() {
+    setAuthErro('');
+    setUsuarioDadosChave('');
+    setDadosRemotosCarregados(false);
+    setTentativaSincronizacao((tentativa) => tentativa + 1);
   }
 
   async function aprovarCadastroUsuario(matricula) {
@@ -1484,7 +1511,19 @@ function App() {
               <h1>Sincronizando</h1>
             </div>
           </div>
-          <div className="auth-info">Carregando dados do Supabase...</div>
+          {authErro ? (
+            <>
+              <div className="auth-error">{authErro}</div>
+              <button className="primary-button" type="button" onClick={tentarSincronizarSessao}>
+                Tentar novamente
+              </button>
+              <button className="auth-logout-button" type="button" onClick={sair}>
+                Sair
+              </button>
+            </>
+          ) : (
+            <div className="auth-info">Carregando dados do Supabase...</div>
+          )}
         </section>
       </main>
     );
