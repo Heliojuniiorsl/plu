@@ -1,3 +1,5 @@
+import logo from '../assets/logo.svg';
+
 export default function Header({
   navItems,
   activePath,
@@ -8,6 +10,15 @@ export default function Header({
 }) {
   return (
     <header className="app-header">
+      <div className="brand-card">
+        <img className="brand-logo" src={logo} alt="Sem Vencer" />
+        <div className="brand-copy">
+          <span>Sem Vencer</span>
+          <h1>Controle de validades</h1>
+          <p>PLU, lotes e vencimentos sincronizados</p>
+        </div>
+      </div>
+
       <nav className="main-nav" aria-label="Navegacao principal">
         {navItems.map((item) => {
           const Icon = item.icon;
