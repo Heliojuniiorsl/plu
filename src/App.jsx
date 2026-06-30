@@ -997,6 +997,13 @@ function App() {
   }, [categoria, categoriasProdutos]);
 
   const resultados = useMemo(() => {
+    const termoAtivo = termoPesquisa.trim().length > 0;
+    const categoriaAtivaBusca = (categoria || 'Todas') !== 'Todas';
+
+    if (!termoAtivo && !categoriaAtivaBusca) {
+      return [];
+    }
+
     return buscarProdutos(produtosFiltradosPorSecao, termoPesquisa, categoria);
   }, [produtosFiltradosPorSecao, termoPesquisa, categoria]);
 
@@ -1833,6 +1840,7 @@ function PesquisaPluPage({
   const [categoriasAberto, setCategoriasAberto] = useState(false);
   const [limiteResultados, setLimiteResultados] = useState(quantidadeInicialPesquisaPlu);
   const categoriaAtiva = categoria || 'Todas';
+  const pesquisaAtiva = termoPesquisa.trim().length > 0 || categoriaAtiva !== 'Todas';
   const totalResultadoTexto = `${resultados.length} PLU ${resultados.length === 1 ? 'encontrado' : 'encontrados'}`;
   const resultadosVisiveis = useMemo(
     () => resultados.slice(0, limiteResultados),
@@ -1917,12 +1925,16 @@ function PesquisaPluPage({
       )}
 
       <section className="work-panel">
-        <div className="results-count">
-          <strong>{totalResultadoTexto}</strong>
-          {temMaisResultados && <span>{totalVisivelTexto}</span>}
-        </div>
+        {pesquisaAtiva && (
+          <div className="results-count">
+            <strong>{totalResultadoTexto}</strong>
+            {temMaisResultados && <span>{totalVisivelTexto}</span>}
+          </div>
+        )}
 
-        {resultados.length > 0 ? (
+        {!pesquisaAtiva ? (
+          <div className="empty-state">Digite um PLU, nome ou escolha uma categoria para pesquisar.</div>
+        ) : resultados.length > 0 ? (
           visualizacao === 'cards' ? (
             <ResultadoCards produtos={resultadosVisiveis} total={resultados.length} />
           ) : (
