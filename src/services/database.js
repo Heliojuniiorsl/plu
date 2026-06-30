@@ -623,6 +623,50 @@ export async function aprovarUsuario(matricula) {
   return usuario;
 }
 
+export async function removerUsuario(usuario, administrador) {
+  exigirSupabase();
+
+  const matriculaLimpa = somenteDigitos(usuario?.matricula);
+  const idRemoto = usuario?.id && !String(usuario.id).startsWith('local-') ? usuario.id : '';
+
+  if (!matriculaLimpa && !idRemoto) {
+    throw new Error('Usuario invalido.');
+  }
+
+  const adminBanco = await garantirUsuarioRemoto(administrador);
+  if (!adminBanco.admin) {
+    throw new Error('Somente o administrador pode excluir usuarios.');
+  }
+
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('id, matricula, telefone, admin, aprovado')
+    .eq(idRemoto ? 'id' : 'matricula', idRemoto || matriculaLimpa)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const usuarioBanco = normalizarUsuario(data);
+  if (usuarioBanco.admin || usuarioBanco.matricula === ADMIN_MATRICULA) {
+    throw new Error('Nao e permitido excluir o usuario administrador.');
+  }
+
+  if (usuarioBanco.id === adminBanco.id) {
+    throw new Error('Nao e permitido excluir o usuario logado.');
+  }
+
+  const usuarioId = usuarioBanco.id;
+
+  const { error: validadesError } = await supabase.from('validades').delete().eq('usuario_id', usuarioId);
+  if (validadesError) throw new Error(validadesError.message);
+
+  const { error: usuarioError } = await supabase.from('usuarios').delete().eq('id', usuarioId);
+  if (usuarioError) throw new Error(usuarioError.message);
+
+  return usuarioBanco;
+}
+
 export async function carregarDadosRemotos(usuario) {
   exigirSupabase();
   if (!usuario) {

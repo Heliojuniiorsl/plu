@@ -41,6 +41,7 @@ import {
   formatarTelefone,
   loginUsuario,
   registrarAtividadeUsuario,
+  removerUsuario,
   removerValidadeRemota,
   salvarPreferenciasUsuario,
   salvarValidadesRemotas,
@@ -1198,6 +1199,35 @@ function App() {
     }
   }
 
+  async function excluirUsuarioAdmin(usuario) {
+    if (!usuario) return;
+
+    if (usuario.admin || usuario.matricula === ADMIN_MATRICULA || usuario.matricula === usuarioAtual?.matricula) {
+      window.alert('Nao e permitido excluir este usuario.');
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `Excluir o usuario ${usuario.matricula}? Essa acao remove tambem os produtos, preferencias e logs desse usuario.`,
+    );
+
+    if (!confirmado) return;
+
+    setSincronizando(true);
+
+    try {
+      await removerUsuario(usuario, usuarioAtual);
+      setUsuariosAdmin((usuarios) => usuarios.filter((item) => item.matricula !== usuario.matricula));
+      setUsuariosPendentes((usuarios) => usuarios.filter((item) => item.matricula !== usuario.matricula));
+      setUsuarioAdminSelecionado((selecionado) => (selecionado?.matricula === usuario.matricula ? null : selecionado));
+    } catch (error) {
+      console.warn('Nao foi possivel excluir usuario', error);
+      window.alert(error.message || 'Nao foi possivel excluir o usuario.');
+    } finally {
+      setSincronizando(false);
+    }
+  }
+
   async function copiarPlu() {
     if (!pluCompleto) return;
     await copiarTexto(pluCompleto);
@@ -1472,6 +1502,7 @@ function App() {
     usuarioAdminSelecionado,
     setUsuarioAdminSelecionado,
     aprovarCadastroUsuario,
+    excluirUsuarioAdmin,
     sair,
     navegar,
   };
@@ -2301,6 +2332,7 @@ function ConfiguracaoPage({
   usuarioAdminSelecionado,
   setUsuarioAdminSelecionado,
   aprovarCadastroUsuario,
+  excluirUsuarioAdmin,
   sair,
   secoesProdutos,
   contagemSecoesProdutos,
@@ -2440,6 +2472,7 @@ function ConfiguracaoPage({
                   sincronizando={sincronizando}
                   onOpen={() => setUsuarioAdminSelecionado(usuario)}
                   onApprove={() => aprovarCadastroUsuario(usuario.matricula)}
+                  onDelete={() => excluirUsuarioAdmin(usuario)}
                 />
               ))}
             </div>
@@ -2455,6 +2488,7 @@ function ConfiguracaoPage({
           sincronizando={sincronizando}
           onClose={() => setUsuarioAdminSelecionado(null)}
           onApprove={() => aprovarCadastroUsuario(usuarioAdminSelecionado.matricula)}
+          onDelete={() => excluirUsuarioAdmin(usuarioAdminSelecionado)}
         />
       )}
     </div>
@@ -2513,8 +2547,9 @@ function UsuarioLogo({ usuario }) {
   return <span className={`user-logo tone-${tomUsuarioAdmin(usuario)}`}>{iniciais}</span>;
 }
 
-function UsuarioAdminCard({ usuario, sincronizando, onOpen, onApprove }) {
+function UsuarioAdminCard({ usuario, sincronizando, onOpen, onApprove, onDelete }) {
   const pendente = !usuario.admin && !usuario.aprovado;
+  const podeExcluir = !usuario.admin && usuario.matricula !== ADMIN_MATRICULA;
 
   return (
     <article
@@ -2550,12 +2585,27 @@ function UsuarioAdminCard({ usuario, sincronizando, onOpen, onApprove }) {
           Aprovar
         </button>
       )}
+      {podeExcluir && (
+        <button
+          type="button"
+          className="admin-delete-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
+          disabled={sincronizando}
+        >
+          <Trash2 size={15} />
+          Excluir
+        </button>
+      )}
     </article>
   );
 }
 
-function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove }) {
+function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove, onDelete }) {
   const pendente = !usuario.admin && !usuario.aprovado;
+  const podeExcluir = !usuario.admin && usuario.matricula !== ADMIN_MATRICULA;
   const atividade = usuario.atividade || {};
   const historico = Array.isArray(atividade.historico) ? atividade.historico.slice(0, 12) : [];
 
@@ -2657,6 +2707,12 @@ function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove }
             <button className="detail-action edit" type="button" onClick={onApprove} disabled={sincronizando}>
               <CheckCircle2 size={18} />
               Aprovar cadastro
+            </button>
+          )}
+          {podeExcluir && (
+            <button className="detail-action danger" type="button" onClick={onDelete} disabled={sincronizando}>
+              <Trash2 size={18} />
+              Excluir usuario
             </button>
           )}
           <button className="detail-action delete" type="button" onClick={onClose}>

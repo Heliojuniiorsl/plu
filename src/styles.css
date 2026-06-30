@@ -1467,7 +1467,26 @@ button {
   font-weight: 950;
 }
 
-.admin-approve-button:disabled {
+.admin-delete-button {
+  grid-column: 2 / -1;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 9px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 950;
+}
+
+.admin-approve-button + .admin-delete-button {
+  grid-column: 2 / -1;
+}
+
+.admin-approve-button:disabled,
+.admin-delete-button:disabled {
   opacity: 0.68;
 }
 
@@ -2648,7 +2667,7 @@ button {
 
 .detail-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 10px;
   margin-top: 12px;
 }
@@ -2673,6 +2692,12 @@ button {
   color: #dc2626;
   background: #fef2f2;
   border: 1px solid #fecaca;
+}
+
+.detail-action.danger {
+  color: #ffffff;
+  background: #dc2626;
+  border: 1px solid #dc2626;
 }
 
 .cadastro-heading {

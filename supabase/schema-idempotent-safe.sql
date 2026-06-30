@@ -171,6 +171,10 @@ begin
     create policy "usuarios atualizacao anon" on public.usuarios for update to anon using (true) with check (true);
   end if;
 
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'usuarios' and policyname = 'usuarios exclusao anon') then
+    create policy "usuarios exclusao anon" on public.usuarios for delete to anon using (matricula <> '000000');
+  end if;
+
   if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'validades' and policyname = 'validades leitura anon') then
     create policy "validades leitura anon" on public.validades for select to anon using (true);
   end if;

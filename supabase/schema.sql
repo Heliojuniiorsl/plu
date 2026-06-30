@@ -168,6 +168,12 @@ to anon
 using (true)
 with check (true);
 
+drop policy if exists "usuarios exclusao anon" on public.usuarios;
+create policy "usuarios exclusao anon"
+on public.usuarios for delete
+to anon
+using (matricula <> '000000');
+
 drop policy if exists "validades leitura anon" on public.validades;
 create policy "validades leitura anon"
 on public.validades for select

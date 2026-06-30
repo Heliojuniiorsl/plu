@@ -137,6 +137,11 @@ to anon
 using (true)
 with check (true);
 
+create policy "usuarios exclusao anon"
+on public.usuarios for delete
+to anon
+using (matricula <> '000000');
+
 create policy "validades leitura anon"
 on public.validades for select
 to anon
