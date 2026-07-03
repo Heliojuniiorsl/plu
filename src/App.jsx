@@ -2608,6 +2608,8 @@ function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove, 
   const podeExcluir = !usuario.admin && usuario.matricula !== ADMIN_MATRICULA;
   const atividade = usuario.atividade || {};
   const historico = Array.isArray(atividade.historico) ? atividade.historico.slice(0, 12) : [];
+  const produtosUsuario = Array.isArray(atividade.produtos) ? atividade.produtos : [];
+  const [mostrarProdutos, setMostrarProdutos] = useState(false);
 
   return (
     <div className="bottom-sheet-backdrop" role="presentation" onClick={onClose}>
@@ -2643,7 +2645,12 @@ function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove, 
           <DetailBox label="Telefone" value={formatarTelefone(usuario.telefone)} destaque />
           <DetailBox label="Ultimo login" value={formatarDataHora(usuario.lastLoginAt)} />
           <DetailBox label="Cadastrado em" value={formatarDataHora(usuario.createdAt)} />
-          <DetailBox label="Produtos atuais" value={atividade.totalProdutos ?? 0} />
+          <DetailBox
+            label="Produtos atuais"
+            value={atividade.totalProdutos ?? 0}
+            active={mostrarProdutos}
+            onClick={() => setMostrarProdutos((valor) => !valor)}
+          />
           <DetailBox label="Logs recentes" value={atividade.totalAcoes ?? 0} />
           <DetailBox label="Logins recentes" value={atividade.totalLogins ?? 0} />
           <DetailBox label="Cadastros recentes" value={atividade.totalCadastros ?? 0} />
@@ -2655,6 +2662,37 @@ function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove, 
           <DetailBox label="PLU / EAN" value={atividade.ultimoPlu || 'Sem PLU'} />
           <DetailBox label="Validade" value={atividade.ultimaValidade ? formatarData(atividade.ultimaValidade) : 'Sem validade'} />
         </div>
+
+        {mostrarProdutos && (
+          <section className="user-products-panel" aria-labelledby="produtos-usuario-titulo">
+            <div className="user-activity-heading">
+              <div>
+                <span>Produtos</span>
+                <h4 id="produtos-usuario-titulo">Cadastrados pelo usuario</h4>
+              </div>
+              <strong>{produtosUsuario.length} item(ns)</strong>
+            </div>
+
+            {produtosUsuario.length > 0 ? (
+              <div className="user-products-list">
+                {produtosUsuario.map((produto) => (
+                  <article className="user-product-item" key={produto.id}>
+                    <strong>{produto.produto}</strong>
+                    <div>
+                      <span>PLU {produto.plu}</span>
+                      {produto.quantidade && <span>Qtd. {produto.quantidade}</span>}
+                      {produto.validade && <span>Val. {formatarData(produto.validade)}</span>}
+                      {produto.tipo && <span>{produto.tipo}</span>}
+                      {produto.setor && <span>{produto.setor}</span>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-activity-history">Esse usuario ainda nao cadastrou produtos.</div>
+            )}
+          </section>
+        )}
 
         <section className="user-activity-history" aria-labelledby="historico-usuario-titulo">
           <div className="user-activity-heading">
@@ -2998,15 +3036,31 @@ function valorDetalhe(valor) {
   return valor === undefined || valor === null || valor === '' ? 'Nao informado' : valor;
 }
 
-function DetailBox({ label, value, destaque, wide }) {
+function DetailBox({ label, value, destaque, wide, onClick, active }) {
   const classes = ['detail-info-box'];
   if (destaque) classes.push('highlight');
   if (wide) classes.push('wide');
+  if (onClick) classes.push('clickable');
+  if (active) classes.push('active');
+
+  const conteudo = (
+    <>
+      <span>{label}</span>
+      <strong>{valorDetalhe(value)}</strong>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button className={classes.join(' ')} type="button" onClick={onClick}>
+        {conteudo}
+      </button>
+    );
+  }
 
   return (
     <div className={classes.join(' ')}>
-      <span>{label}</span>
-      <strong>{valorDetalhe(value)}</strong>
+      {conteudo}
     </div>
   );
 }

@@ -2423,11 +2423,26 @@ button {
   border-radius: 12px;
   border: 1px solid #dce4ee;
   background: #f8fafc;
+  text-align: left;
 }
 
 .detail-info-box.highlight {
   background: linear-gradient(135deg, rgba(15, 118, 110, 0.09), rgba(217, 164, 65, 0.12));
   border-color: rgba(15, 118, 110, 0.2);
+}
+
+.detail-info-box.clickable {
+  cursor: pointer;
+}
+
+.detail-info-box.clickable:hover,
+.detail-info-box.clickable.active {
+  border-color: #0b57d0;
+  background: #e8f0fe;
+}
+
+.detail-info-box.clickable.active strong {
+  color: #0b57d0;
 }
 
 .detail-info-box.wide {
@@ -2532,6 +2547,51 @@ button {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #dce4ee;
+}
+
+.user-products-panel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #dce4ee;
+}
+
+.user-products-list {
+  display: grid;
+  gap: 7px;
+}
+
+.user-product-item {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #dce4ee;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.user-product-item strong {
+  overflow: hidden;
+  color: #151f2d;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-product-item div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.user-product-item span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #d6e0eb;
+  color: #485568;
+  font-size: 9px;
+  font-weight: 900;
 }
 
 .user-activity-heading {
@@ -4451,7 +4511,8 @@ button {
   border-color: #a8c7fa;
 }
 
-:root .user-activity-history {
+:root .user-activity-history,
+:root .user-products-panel {
   border-top-color: var(--google-border);
 }
 
@@ -4472,10 +4533,20 @@ button {
 }
 
 :root .activity-details em,
+:root .user-product-item span,
 :root .empty-activity-history {
   background: #ffffff;
   border-color: var(--google-border);
   color: var(--google-muted);
+}
+
+:root .user-product-item {
+  background: var(--google-surface-soft);
+  border-color: var(--google-border);
+}
+
+:root .user-product-item strong {
+  color: var(--google-text);
 }
 
 :root .user-logo.tone-admin {

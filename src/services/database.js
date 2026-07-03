@@ -443,9 +443,21 @@ function resumoAtividadeUsuario(usuario, validades = [], logs = []) {
     .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
     .map(normalizarLogAtividade);
   const ultimoLog = historico[0] || null;
+  const produtos = itens.map((item) => ({
+    id: item.id || `${item.usuario_id}-${item.plu}-${item.validade}`,
+    produto: item.produto || 'Produto sem nome',
+    plu: item.plu || 'Sem PLU',
+    quantidade: item.quantidade || '',
+    validade: item.validade || '',
+    tipo: item.tipo || '',
+    setor: item.setor || '',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }));
 
   return {
     totalProdutos: itens.length,
+    produtos,
     ultimoProduto: ultimo?.produto || '',
     ultimoPlu: ultimo?.plu || '',
     ultimaValidade: ultimo?.validade || '',
@@ -494,7 +506,7 @@ export async function carregarUsuariosAdmin() {
   if (ids.length > 0) {
     const { data, error } = await supabase
       .from('validades')
-      .select('usuario_id, produto, plu, validade, created_at, updated_at')
+      .select('id, usuario_id, produto, plu, quantidade, setor, tipo, validade, created_at, updated_at')
       .in('usuario_id', ids);
 
     if (error) throw new Error(error.message);
