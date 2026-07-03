@@ -2,6 +2,7 @@ create extension if not exists "pgcrypto";
 
 create table if not exists public.usuarios (
   id uuid primary key default gen_random_uuid(),
+  nome text,
   matricula text not null unique,
   telefone text not null,
   admin boolean not null default false,
@@ -10,6 +11,7 @@ create table if not exists public.usuarios (
   last_login_at timestamptz
 );
 
+alter table if exists public.usuarios add column if not exists nome text;
 alter table if exists public.usuarios add column if not exists aprovado boolean not null default false;
 alter table if exists public.usuarios add column if not exists last_login_at timestamptz;
 alter table if exists public.usuarios add column if not exists last_activity_label text;
@@ -146,10 +148,10 @@ begin
   end if;
 end $$;
 
-insert into public.usuarios (matricula, telefone, admin, aprovado)
-values ('000000', '00000000000', true, true)
+insert into public.usuarios (nome, matricula, telefone, admin, aprovado)
+values ('Administrador', '000000', '00000000000', true, true)
 on conflict (matricula)
-do update set admin = true, aprovado = true;
+do update set nome = coalesce(nullif(public.usuarios.nome, ''), excluded.nome), admin = true, aprovado = true;
 
 alter table public.usuarios enable row level security;
 alter table public.validades enable row level security;

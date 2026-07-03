@@ -8,6 +8,52 @@ function somenteDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
 }
 
+function normalizarNomePessoa(valor) {
+  return String(valor || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+}
+
+export function nomeUsuarioValido(valor) {
+  const nome = normalizarNomePessoa(valor);
+  const nomeSemAcento = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return nome.length >= 3 && /[a-z]/i.test(nomeSemAcento);
+}
+
+function temCampoNome(usuario) {
+  return Boolean(usuario && Object.prototype.hasOwnProperty.call(usuario, 'nome'));
+}
+
+function erroColunaNomeAusente(error) {
+  return /nome|schema cache|column/i.test(String(error?.message || ''));
+}
+
+function marcarSuporteNome(data, suportado) {
+  if (Array.isArray(data)) {
+    return data.map((item) => (item ? { ...item, nomeSuportado: suportado } : item));
+  }
+
+  return data ? { ...data, nomeSuportado: suportado } : data;
+}
+
+async function consultarComFallbackNome(criarConsulta, selectComNome, selectSemNome) {
+  const consulta = await criarConsulta(selectComNome);
+
+  if (consulta.error && erroColunaNomeAusente(consulta.error)) {
+    const fallback = await criarConsulta(selectSemNome);
+    return {
+      ...fallback,
+      data: marcarSuporteNome(fallback.data, false),
+    };
+  }
+
+  return {
+    ...consulta,
+    data: marcarSuporteNome(consulta.data, true),
+  };
+}
+
 function exigirSupabase() {
   if (!supabaseConfigurado || !supabase) {
     throw new Error('Supabase nao configurado. O app precisa estar online para acessar o banco.');
@@ -55,9 +101,13 @@ function normalizarUsuario(usuario) {
   if (!usuario) return null;
   const matricula = somenteDigitos(usuario.matricula);
   const admin = matricula === ADMIN_MATRICULA;
+  const nomeSuportado = temCampoNome(usuario) || usuario.nomeSuportado === true;
+  const nome = normalizarNomePessoa(usuario.nome || usuario.nomeUsuario || '');
 
   return {
     id: usuario.id || `local-${matricula}`,
+    nome,
+    nomeSuportado,
     matricula,
     telefone: somenteDigitos(usuario.telefone),
     admin,
@@ -169,11 +219,11 @@ async function garantirUsuarioRemoto(usuario) {
   let data = null;
 
   if (idValido) {
-    const consultaPorId = await supabase
-      .from('usuarios')
-      .select('id, matricula, telefone, admin, aprovado')
-      .eq('id', idRemoto)
-      .maybeSingle();
+    const consultaPorId = await consultarComFallbackNome(
+      (select) => supabase.from('usuarios').select(select).eq('id', idRemoto).maybeSingle(),
+      'id, nome, matricula, telefone, admin, aprovado',
+      'id, matricula, telefone, admin, aprovado',
+    );
 
     if (consultaPorId.error) throw new Error(consultaPorId.error.message);
     data = consultaPorId.data;
@@ -184,11 +234,11 @@ async function garantirUsuarioRemoto(usuario) {
   }
 
   if (!data && matricula) {
-    const consultaPorMatricula = await supabase
-      .from('usuarios')
-      .select('id, matricula, telefone, admin, aprovado')
-      .eq('matricula', matricula)
-      .maybeSingle();
+    const consultaPorMatricula = await consultarComFallbackNome(
+      (select) => supabase.from('usuarios').select(select).eq('matricula', matricula).maybeSingle(),
+      'id, nome, matricula, telefone, admin, aprovado',
+      'id, matricula, telefone, admin, aprovado',
+    );
 
     if (consultaPorMatricula.error) throw new Error(consultaPorMatricula.error.message);
     data = consultaPorMatricula.data;
@@ -285,12 +335,17 @@ export async function carregarProdutosBaseRemotos() {
   return produtos.map(fromDbProduto);
 }
 
-export async function cadastrarUsuario({ matricula, telefone }) {
+export async function cadastrarUsuario({ matricula, telefone, nome }) {
   const matriculaLimpa = somenteDigitos(matricula);
   const telefoneLimpo = somenteDigitos(telefone);
+  const nomeLimpo = normalizarNomePessoa(nome);
 
-  if (!matriculaLimpa || !telefoneLimpo) {
-    throw new Error('Informe telefone e matricula.');
+  if (!matriculaLimpa || !telefoneLimpo || !nomeLimpo) {
+    throw new Error('Informe nome, telefone e matricula.');
+  }
+
+  if (!nomeUsuarioValido(nomeLimpo)) {
+    throw new Error('Informe o nome da pessoa.');
   }
 
   if (!telefoneValido(telefoneLimpo)) {
@@ -298,6 +353,7 @@ export async function cadastrarUsuario({ matricula, telefone }) {
   }
 
   const usuarioPayload = {
+    nome: nomeLimpo,
     matricula: matriculaLimpa,
     telefone: telefoneLimpo,
     admin: matriculaLimpa === ADMIN_MATRICULA,
@@ -306,11 +362,11 @@ export async function cadastrarUsuario({ matricula, telefone }) {
 
   exigirSupabase();
 
-  const { data: existente, error: consultaError } = await supabase
-    .from('usuarios')
-    .select('id, matricula, telefone, admin, aprovado')
-    .eq('matricula', matriculaLimpa)
-    .maybeSingle();
+  const { data: existente, error: consultaError } = await consultarComFallbackNome(
+    (select) => supabase.from('usuarios').select(select).eq('matricula', matriculaLimpa).maybeSingle(),
+    'id, nome, matricula, telefone, admin, aprovado',
+    'id, matricula, telefone, admin, aprovado',
+  );
 
   if (consultaError) throw new Error(consultaError.message);
 
@@ -322,12 +378,26 @@ export async function cadastrarUsuario({ matricula, telefone }) {
     throw new Error('Matricula ja cadastrada. Use o login para entrar.');
   }
 
-  const { data, error } = await supabase
+  let cadastro = await supabase
     .from('usuarios')
     .insert(usuarioPayload)
-    .select('id, matricula, telefone, admin, aprovado')
+    .select('id, nome, matricula, telefone, admin, aprovado')
     .single();
 
+  if (cadastro.error && erroColunaNomeAusente(cadastro.error)) {
+    const { nome: _nome, ...payloadSemNome } = usuarioPayload;
+    cadastro = await supabase
+      .from('usuarios')
+      .insert(payloadSemNome)
+      .select('id, matricula, telefone, admin, aprovado')
+      .single();
+
+    if (cadastro.data) {
+      cadastro.data = { ...cadastro.data, nomeSuportado: false };
+    }
+  }
+
+  const { data, error } = cadastro;
   if (error) throw new Error(error.message);
 
   const usuario = normalizarUsuario(data);
@@ -350,27 +420,47 @@ export async function loginUsuario(matricula) {
 
   exigirSupabase();
 
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('id, matricula, telefone, admin, aprovado')
-    .eq('matricula', matriculaLimpa)
-    .maybeSingle();
+  const { data, error } = await consultarComFallbackNome(
+    (select) => supabase.from('usuarios').select(select).eq('matricula', matriculaLimpa).maybeSingle(),
+    'id, nome, matricula, telefone, admin, aprovado',
+    'id, matricula, telefone, admin, aprovado',
+  );
 
   if (error) throw new Error(error.message);
   if (!data && matriculaLimpa === ADMIN_MATRICULA) {
     const primeiroLoginAt = new Date().toISOString();
-    const { data: adminData, error: adminError } = await supabase
+    let cadastroAdmin = await supabase
       .from('usuarios')
       .insert({
+        nome: 'Administrador',
         matricula: ADMIN_MATRICULA,
         telefone: '00000000000',
         admin: true,
         aprovado: true,
         last_login_at: primeiroLoginAt,
       })
-      .select('id, matricula, telefone, admin, aprovado, last_login_at')
+      .select('id, nome, matricula, telefone, admin, aprovado, last_login_at')
       .single();
 
+    if (cadastroAdmin.error && erroColunaNomeAusente(cadastroAdmin.error)) {
+      cadastroAdmin = await supabase
+        .from('usuarios')
+        .insert({
+          matricula: ADMIN_MATRICULA,
+          telefone: '00000000000',
+          admin: true,
+          aprovado: true,
+          last_login_at: primeiroLoginAt,
+        })
+        .select('id, matricula, telefone, admin, aprovado, last_login_at')
+        .single();
+
+      if (cadastroAdmin.data) {
+        cadastroAdmin.data = { ...cadastroAdmin.data, nomeSuportado: false };
+      }
+    }
+
+    const { data: adminData, error: adminError } = cadastroAdmin;
     if (adminError) throw new Error(adminError.message);
 
     const admin = normalizarUsuario(adminData);
@@ -414,12 +504,17 @@ export async function loginUsuario(matricula) {
 export async function carregarUsuariosPendentes() {
   exigirSupabase();
 
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('id, matricula, telefone, admin, aprovado, created_at')
-    .eq('aprovado', false)
-    .eq('admin', false)
-    .order('created_at', { ascending: true });
+  const { data, error } = await consultarComFallbackNome(
+    (select) =>
+      supabase
+        .from('usuarios')
+        .select(select)
+        .eq('aprovado', false)
+        .eq('admin', false)
+        .order('created_at', { ascending: true }),
+    'id, nome, matricula, telefone, admin, aprovado, created_at',
+    'id, matricula, telefone, admin, aprovado, created_at',
+  );
 
   if (error) throw new Error(error.message);
   return (data || []).map(normalizarUsuario);
@@ -477,17 +572,26 @@ function resumoAtividadeUsuario(usuario, validades = [], logs = []) {
 
 async function carregarUsuariosRemotosAdmin() {
   const selectCompleto =
-    'id, matricula, telefone, admin, aprovado, created_at, last_login_at, last_activity_label, last_activity_at, last_route';
+    'id, nome, matricula, telefone, admin, aprovado, created_at, last_login_at, last_activity_label, last_activity_at, last_route';
   const selectBasico = 'id, matricula, telefone, admin, aprovado, created_at, last_login_at';
 
-  let consulta = await supabase
-    .from('usuarios')
-    .select(selectCompleto)
-    .or(`last_route.is.null,last_route.neq.${ROTA_USUARIO_EXCLUIDO}`)
-    .order('created_at', { ascending: false });
+  let consulta = await consultarComFallbackNome(
+    (select) =>
+      supabase
+        .from('usuarios')
+        .select(select)
+        .or(`last_route.is.null,last_route.neq.${ROTA_USUARIO_EXCLUIDO}`)
+        .order('created_at', { ascending: false }),
+    selectCompleto,
+    selectBasico,
+  );
 
   if (consulta.error && /last_activity_|last_route/i.test(consulta.error.message)) {
-    consulta = await supabase.from('usuarios').select(selectBasico).order('created_at', { ascending: false });
+    consulta = await consultarComFallbackNome(
+      (select) => supabase.from('usuarios').select(select).order('created_at', { ascending: false }),
+      'id, nome, matricula, telefone, admin, aprovado, created_at, last_login_at',
+      selectBasico,
+    );
   }
 
   if (consulta.error) throw new Error(consulta.error.message);
@@ -611,6 +715,41 @@ export async function registrarAtividadeUsuario(usuario, atividade, rota = '') {
   return dadosAtividade;
 }
 
+export async function atualizarNomeUsuario(usuario, nome) {
+  exigirSupabase();
+  const nomeLimpo = normalizarNomePessoa(nome);
+
+  if (!nomeUsuarioValido(nomeLimpo)) {
+    throw new Error('Informe o nome da pessoa.');
+  }
+
+  const usuarioBanco = await garantirUsuarioRemoto(usuario);
+  const { data, error } = await supabase
+    .from('usuarios')
+    .update({ nome: nomeLimpo })
+    .eq('id', usuarioBanco.id)
+    .select('id, nome, matricula, telefone, admin, aprovado, created_at, last_login_at, last_activity_label, last_activity_at, last_route')
+    .single();
+
+  if (error) {
+    if (erroColunaNomeAusente(error)) {
+      throw new Error('Atualize a tabela usuarios no Supabase para salvar o nome.');
+    }
+
+    throw new Error(error.message);
+  }
+
+  const usuarioAtualizado = normalizarUsuario(data);
+  inserirLogAtividade(usuarioAtualizado, {
+    acao: 'nome_atualizado',
+    categoria: 'conta',
+    descricao: 'Atualizou o nome do perfil',
+    rota: '/perfil',
+  }).catch(() => {});
+
+  return usuarioAtualizado;
+}
+
 export async function aprovarUsuario(matricula) {
   const matriculaLimpa = somenteDigitos(matricula);
 
@@ -620,12 +759,17 @@ export async function aprovarUsuario(matricula) {
 
   exigirSupabase();
 
-  const { data, error } = await supabase
-    .from('usuarios')
-    .update({ aprovado: true, admin: false })
-    .eq('matricula', matriculaLimpa)
-    .select('id, matricula, telefone, admin, aprovado')
-    .single();
+  const { data, error } = await consultarComFallbackNome(
+    (select) =>
+      supabase
+        .from('usuarios')
+        .update({ aprovado: true, admin: false })
+        .eq('matricula', matriculaLimpa)
+        .select(select)
+        .single(),
+    'id, nome, matricula, telefone, admin, aprovado',
+    'id, matricula, telefone, admin, aprovado',
+  );
 
   if (error) throw new Error(error.message);
 
@@ -655,11 +799,16 @@ export async function removerUsuario(usuario, administrador) {
     throw new Error('Somente o administrador pode excluir usuarios.');
   }
 
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('id, matricula, telefone, admin, aprovado')
-    .eq(idRemoto ? 'id' : 'matricula', idRemoto || matriculaLimpa)
-    .maybeSingle();
+  const { data, error } = await consultarComFallbackNome(
+    (select) =>
+      supabase
+        .from('usuarios')
+        .select(select)
+        .eq(idRemoto ? 'id' : 'matricula', idRemoto || matriculaLimpa)
+        .maybeSingle(),
+    'id, nome, matricula, telefone, admin, aprovado',
+    'id, matricula, telefone, admin, aprovado',
+  );
 
   if (error) throw new Error(error.message);
   if (!data) return null;

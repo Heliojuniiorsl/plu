@@ -31,6 +31,7 @@ import {
   CONTATO_LIBERACAO,
   assinarValidadesRemotas,
   aprovarUsuario,
+  atualizarNomeUsuario,
   bancoAtivo,
   cadastrarUsuario,
   carregarPreferenciasUsuario,
@@ -40,6 +41,7 @@ import {
   carregarValidadesRemotas,
   formatarTelefone,
   loginUsuario,
+  nomeUsuarioValido,
   registrarAtividadeUsuario,
   removerUsuario,
   removerValidadeRemota,
@@ -388,6 +390,12 @@ function usuarioPodeAcessar(usuario) {
   return Boolean(usuario?.admin || usuario?.aprovado);
 }
 
+function usuarioPrecisaNome(usuario) {
+  if (!usuario || !usuarioPodeAcessar(usuario)) return false;
+  if (usuario.nomeSuportado === false) return false;
+  return !String(usuario.nome || '').trim();
+}
+
 function salvarSessaoUsuario(usuario) {
   try {
     const matricula = somenteNumeros(usuario?.matricula);
@@ -604,6 +612,8 @@ function carregarUsuarioInicial() {
 
     return {
       id: id && !id.startsWith('local-') ? id : `local-${matricula}`,
+      nome: '',
+      nomeSuportado: false,
       matricula,
       telefone: '',
       admin: false,
@@ -851,6 +861,8 @@ function App() {
         if (
           dados.usuario &&
           (dados.usuario.id !== usuarioAtual.id ||
+            dados.usuario.nome !== usuarioAtual.nome ||
+            dados.usuario.nomeSuportado !== usuarioAtual.nomeSuportado ||
             dados.usuario.admin !== usuarioAtual.admin ||
             dados.usuario.aprovado !== usuarioAtual.aprovado ||
             dados.usuario.telefone !== usuarioAtual.telefone)
@@ -1136,6 +1148,22 @@ function App() {
       setDadosRemotosCarregados(false);
     } catch (error) {
       setAuthErro(error.message || 'Nao foi possivel cadastrar.');
+    } finally {
+      setSincronizando(false);
+    }
+  }
+
+  async function salvarNomeObrigatorio(nome) {
+    setSincronizando(true);
+    setAuthErro('');
+    setAuthMensagem('');
+
+    try {
+      const usuario = await atualizarNomeUsuario(usuarioAtual, nome);
+      salvarSessaoUsuario(usuario);
+      setUsuarioAtual(usuario);
+    } catch (error) {
+      setAuthErro(error.message || 'Nao foi possivel salvar o nome.');
     } finally {
       setSincronizando(false);
     }
@@ -1567,6 +1595,18 @@ function App() {
     );
   }
 
+  if (usuarioPrecisaNome(usuarioAtual)) {
+    return (
+      <NomeObrigatorioPage
+        usuarioAtual={usuarioAtual}
+        erro={authErro}
+        loading={sincronizando}
+        onSalvar={salvarNomeObrigatorio}
+        onSair={sair}
+      />
+    );
+  }
+
   if (!secoesConfiguradas) {
     return <OnboardingSecoesPage {...pageProps} />;
   }
@@ -1638,8 +1678,10 @@ function MetricCard({ status, value, label }) {
 
 function AuthPage({ erro, mensagem, loading, onLogin, onCadastro }) {
   const [modo, setModo] = useState('login');
+  const [nome, setNome] = useState('');
   const [matricula, setMatricula] = useState('');
   const [telefone, setTelefone] = useState('');
+  const nomeLimpo = nome.replace(/\s+/g, ' ').trim();
   const matriculaLimpa = somenteNumeros(matricula);
   const telefoneLimpo = somenteNumeros(telefone);
 
@@ -1653,6 +1695,7 @@ function AuthPage({ erro, mensagem, loading, onLogin, onCadastro }) {
 
     if (!telefoneValido(telefoneLimpo)) {
       onCadastro({
+        nome: nomeLimpo,
         matricula: matriculaLimpa,
         telefone: telefoneLimpo,
       });
@@ -1660,6 +1703,7 @@ function AuthPage({ erro, mensagem, loading, onLogin, onCadastro }) {
     }
 
     onCadastro({
+      nome: nomeLimpo,
       matricula: matriculaLimpa,
       telefone: telefoneLimpo,
     });
@@ -1696,16 +1740,28 @@ function AuthPage({ erro, mensagem, loading, onLogin, onCadastro }) {
           </label>
 
           {modo === 'cadastro' && (
-            <label>
-              Telefone
-              <input
-                value={formatarTelefone(telefone)}
-                inputMode="tel"
-                placeholder="(61) 99842-7629"
-                maxLength={15}
-                onChange={(event) => setTelefone(somenteNumeros(event.target.value).slice(0, 11))}
-              />
-            </label>
+            <>
+              <label>
+                Nome
+                <input
+                  value={nome}
+                  autoComplete="name"
+                  maxLength={80}
+                  placeholder="Nome completo"
+                  onChange={(event) => setNome(event.target.value)}
+                />
+              </label>
+              <label>
+                Telefone
+                <input
+                  value={formatarTelefone(telefone)}
+                  inputMode="tel"
+                  placeholder="(61) 99842-7629"
+                  maxLength={15}
+                  onChange={(event) => setTelefone(somenteNumeros(event.target.value).slice(0, 11))}
+                />
+              </label>
+            </>
           )}
 
           {mensagem && <div className="auth-info">{mensagem}</div>}
@@ -1714,6 +1770,62 @@ function AuthPage({ erro, mensagem, loading, onLogin, onCadastro }) {
           <button className="primary-button auth-submit" type="submit" disabled={loading}>
             <CheckCircle2 size={18} />
             {loading ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Cadastrar'}
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function NomeObrigatorioPage({ usuarioAtual, erro, loading, onSalvar, onSair }) {
+  const [nome, setNome] = useState('');
+  const nomeLimpo = nome.replace(/\s+/g, ' ').trim();
+  const nomeInvalido = nomeLimpo.length > 0 && !nomeUsuarioValido(nomeLimpo);
+
+  function enviar(event) {
+    event.preventDefault();
+
+    if (!nomeUsuarioValido(nomeLimpo)) return;
+    onSalvar(nomeLimpo);
+  }
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-card">
+        <div className="auth-brand">
+          <PackageCheck size={28} />
+          <div>
+            <span>Sem Vencer</span>
+            <h1>Complete seu perfil</h1>
+          </div>
+        </div>
+
+        <div className="auth-info">
+          Informe seu nome para liberar o acesso desta matricula: <strong>{usuarioAtual?.matricula}</strong>.
+        </div>
+
+        <form className="auth-form" onSubmit={enviar}>
+          <label>
+            Nome
+            <input
+              value={nome}
+              autoComplete="name"
+              maxLength={80}
+              placeholder="Nome completo"
+              onChange={(event) => setNome(event.target.value)}
+            />
+          </label>
+
+          {nomeInvalido && <div className="auth-error">Informe o nome da pessoa.</div>}
+          {erro && <div className="auth-error">{erro}</div>}
+
+          <button className="primary-button auth-submit" type="submit" disabled={loading || !nomeUsuarioValido(nomeLimpo)}>
+            <CheckCircle2 size={18} />
+            {loading ? 'Salvando...' : 'Salvar e continuar'}
+          </button>
+          <button className="auth-logout-button" type="button" onClick={onSair}>
+            <X size={18} />
+            Sair
           </button>
         </form>
       </section>
@@ -2432,6 +2544,10 @@ function ConfiguracaoPage({
 
         <div className="session-panel">
           <div>
+            <span>Nome</span>
+            <strong>{usuarioAtual?.nome || 'Nao informado'}</strong>
+          </div>
+          <div>
             <span>Matricula</span>
             <strong>{usuarioAtual?.matricula}</strong>
           </div>
@@ -2542,7 +2658,15 @@ function detalhesLogAtividade(log) {
 
 function UsuarioLogo({ usuario }) {
   const matricula = usuario?.matricula || '';
-  const iniciais = matricula.slice(-2) || 'U';
+  const nome = String(usuario?.nome || '').trim();
+  const iniciais = nome
+    ? nome
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((parte) => parte.charAt(0))
+        .join('')
+        .toUpperCase()
+    : matricula.slice(-2) || 'U';
 
   return <span className={`user-logo tone-${tomUsuarioAdmin(usuario)}`}>{iniciais}</span>;
 }
@@ -2566,8 +2690,10 @@ function UsuarioAdminCard({ usuario, sincronizando, onOpen, onApprove, onDelete 
     >
       <UsuarioLogo usuario={usuario} />
       <span className="admin-user-main">
-        <strong>{usuario.matricula}</strong>
-        <small>{formatarTelefone(usuario.telefone) || 'Telefone nao informado'}</small>
+        <strong>{usuario.nome || usuario.matricula}</strong>
+        <small>
+          {usuario.matricula} - {formatarTelefone(usuario.telefone) || 'Telefone nao informado'}
+        </small>
         <em>{usuario.atividade?.label || 'Sem atividade recente'}</em>
         <time>{formatarDataHora(usuario.atividade?.at)}</time>
       </span>
@@ -2624,7 +2750,7 @@ function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove, 
         <div className="sheet-header">
           <div>
             <span>Usuario</span>
-            <h3 id="usuario-detalhe-titulo">{usuario.matricula}</h3>
+            <h3 id="usuario-detalhe-titulo">{usuario.nome || usuario.matricula}</h3>
           </div>
           <button className="sheet-close" onClick={onClose} aria-label="Fechar detalhes do usuario">
             <X size={20} />
@@ -2641,6 +2767,7 @@ function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove, 
         </div>
 
         <div className="user-detail-grid">
+          <DetailBox label="Nome" value={usuario.nome || 'Nao informado'} wide destaque />
           <DetailBox label="Matricula" value={usuario.matricula} destaque />
           <DetailBox label="Telefone" value={formatarTelefone(usuario.telefone)} destaque />
           <DetailBox label="Ultimo login" value={formatarDataHora(usuario.lastLoginAt)} />
