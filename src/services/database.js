@@ -2,6 +2,7 @@ import { supabase, supabaseConfigurado } from './supabaseClient';
 
 export const ADMIN_MATRICULA = '000000';
 export const CONTATO_LIBERACAO = '61998427629';
+const ROTA_USUARIO_EXCLUIDO = '__deleted__';
 
 function somenteDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
@@ -467,7 +468,11 @@ async function carregarUsuariosRemotosAdmin() {
     'id, matricula, telefone, admin, aprovado, created_at, last_login_at, last_activity_label, last_activity_at, last_route';
   const selectBasico = 'id, matricula, telefone, admin, aprovado, created_at, last_login_at';
 
-  let consulta = await supabase.from('usuarios').select(selectCompleto).order('created_at', { ascending: false });
+  let consulta = await supabase
+    .from('usuarios')
+    .select(selectCompleto)
+    .or(`last_route.is.null,last_route.neq.${ROTA_USUARIO_EXCLUIDO}`)
+    .order('created_at', { ascending: false });
 
   if (consulta.error && /last_activity_|last_route/i.test(consulta.error.message)) {
     consulta = await supabase.from('usuarios').select(selectBasico).order('created_at', { ascending: false });
@@ -661,8 +666,34 @@ export async function removerUsuario(usuario, administrador) {
   const { error: validadesError } = await supabase.from('validades').delete().eq('usuario_id', usuarioId);
   if (validadesError) throw new Error(validadesError.message);
 
-  const { error: usuarioError } = await supabase.from('usuarios').delete().eq('id', usuarioId);
+  const { data: usuarioRemovido, error: usuarioError } = await supabase
+    .from('usuarios')
+    .delete()
+    .eq('id', usuarioId)
+    .select('id')
+    .maybeSingle();
   if (usuarioError) throw new Error(usuarioError.message);
+
+  if (!usuarioRemovido) {
+    const sufixo = usuarioId.replace(/-/g, '').slice(0, 18);
+    const matriculaExcluida = `excluido-${sufixo}`;
+    const agora = new Date().toISOString();
+    const { data: usuarioAtualizado, error: updateError } = await supabase
+      .from('usuarios')
+      .update({
+        matricula: matriculaExcluida,
+        aprovado: false,
+        last_activity_label: `Usuario ${usuarioBanco.matricula} excluido pelo admin`,
+        last_activity_at: agora,
+        last_route: ROTA_USUARIO_EXCLUIDO,
+      })
+      .eq('id', usuarioId)
+      .select('id')
+      .maybeSingle();
+
+    if (updateError) throw new Error(updateError.message);
+    if (!usuarioAtualizado) throw new Error('O Supabase nao confirmou a exclusao do usuario.');
+  }
 
   return usuarioBanco;
 }
