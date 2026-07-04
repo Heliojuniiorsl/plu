@@ -6,7 +6,7 @@
     "android:debug": "npm run build:android && cd android && gradlew.bat assembleDebug",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist",
+    "deploy": "gh-pages -d dist --dotfiles",
     "supabase:import-produtos": "node scripts/import-produtos-supabase.mjs",
     "supabase:gerar-sql-produtos": "node scripts/gerar-import-produtos-sql.mjs"
   },
