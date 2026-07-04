@@ -665,7 +665,7 @@ function App() {
     tipo: '',
     quantidade: '',
     unidade: 'kg',
-    validade: criarDataRelativa(5),
+    validade: criarDataRelativa(0),
   });
 
   function aplicarValidadesRemotas(itens) {
@@ -748,7 +748,7 @@ function App() {
       .catch((error) => {
         if (!cancelado) {
           setProdutosBase([]);
-          setAuthErro(error.message || 'Nao foi possivel carregar produtos do Supabase.');
+          setAuthErro(error.message || 'Nao foi possivel carregar os dados.');
         }
         console.warn('Nao foi possivel carregar produtos do Supabase', error);
       });
@@ -883,7 +883,7 @@ function App() {
             setValidades([]);
             setUsuarioDadosChave('');
             setDadosRemotosCarregados(false);
-            setAuthErro(error.message || 'Nao foi possivel validar a sessao no Supabase.');
+            setAuthErro(error.message || 'Nao foi possivel validar a sessao.');
           } else {
             salvarSessaoUsuario(usuarioAtual);
             setUsuarioDadosChave('');
@@ -1291,7 +1291,7 @@ function App() {
       tipo: '',
       quantidade: '',
       unidade: 'kg',
-      validade: criarDataRelativa(5),
+      validade: criarDataRelativa(0),
     });
     setCadastroEdicaoId(null);
   }
@@ -1548,7 +1548,7 @@ function App() {
               <h1>Banco online</h1>
             </div>
           </div>
-          <div className="auth-error">Supabase nao configurado. Gere o app com as variaveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.</div>
+          <div className="auth-error">Nao foi possivel conectar ao banco online. Verifique a configuracao do app.</div>
         </section>
       </main>
     );
@@ -1574,7 +1574,7 @@ function App() {
             <PackageCheck size={28} />
             <div>
               <span>Sem Vencer</span>
-              <h1>Sincronizando</h1>
+              <h1>Carregando</h1>
             </div>
           </div>
           {authErro ? (
@@ -1588,7 +1588,7 @@ function App() {
               </button>
             </>
           ) : (
-            <div className="auth-info">Carregando dados do Supabase...</div>
+            <div className="auth-info">Carregando dados...</div>
           )}
         </section>
       </main>
@@ -1742,12 +1742,12 @@ function AuthPage({ erro, mensagem, loading, onLogin, onCadastro }) {
           {modo === 'cadastro' && (
             <>
               <label>
-                Nome
+                Primeiro nome
                 <input
                   value={nome}
                   autoComplete="name"
                   maxLength={80}
-                  placeholder="Nome completo"
+                  placeholder="Primeiro nome"
                   onChange={(event) => setNome(event.target.value)}
                 />
               </label>
@@ -1801,22 +1801,22 @@ function NomeObrigatorioPage({ usuarioAtual, erro, loading, onSalvar, onSair }) 
         </div>
 
         <div className="auth-info">
-          Informe seu nome para liberar o acesso desta matricula: <strong>{usuarioAtual?.matricula}</strong>.
+          Informe seu primeiro nome para liberar o acesso desta matricula: <strong>{usuarioAtual?.matricula}</strong>.
         </div>
 
         <form className="auth-form" onSubmit={enviar}>
           <label>
-            Nome
+            Primeiro nome
             <input
               value={nome}
               autoComplete="name"
               maxLength={80}
-              placeholder="Nome completo"
+              placeholder="Primeiro nome"
               onChange={(event) => setNome(event.target.value)}
             />
           </label>
 
-          {nomeInvalido && <div className="auth-error">Informe o nome da pessoa.</div>}
+          {nomeInvalido && <div className="auth-error">Informe o primeiro nome.</div>}
           {erro && <div className="auth-error">{erro}</div>}
 
           <button className="primary-button auth-submit" type="submit" disabled={loading || !nomeUsuarioValido(nomeLimpo)}>
@@ -2862,7 +2862,7 @@ function UsuarioAdminDetalheSheet({ usuario, sincronizando, onClose, onApprove, 
             </ol>
           ) : (
             <div className="empty-activity-history">
-              O historico comeca a aparecer depois que a tabela de logs for atualizada no Supabase.
+              O historico comeca a aparecer depois que os logs forem atualizados.
             </div>
           )}
         </section>

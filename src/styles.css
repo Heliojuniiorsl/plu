@@ -4814,3 +4814,8 @@ button {
     color: var(--google-blue);
   }
 }
+
+:root .validade-tabela-item,
+:root .produto-cadastro-card {
+  border-left-color: var(--tone, #2563eb) !important;
+}

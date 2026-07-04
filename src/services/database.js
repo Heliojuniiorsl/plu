@@ -9,16 +9,18 @@ function somenteDigitos(valor) {
 }
 
 function normalizarNomePessoa(valor) {
-  return String(valor || '')
+  const nome = String(valor || '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 80);
+
+  return nome.split(' ')[0] || '';
 }
 
 export function nomeUsuarioValido(valor) {
   const nome = normalizarNomePessoa(valor);
   const nomeSemAcento = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return nome.length >= 3 && /[a-z]/i.test(nomeSemAcento);
+  return nome.length >= 2 && /[a-z]/i.test(nomeSemAcento);
 }
 
 function temCampoNome(usuario) {
@@ -56,7 +58,7 @@ async function consultarComFallbackNome(criarConsulta, selectComNome, selectSemN
 
 function exigirSupabase() {
   if (!supabaseConfigurado || !supabase) {
-    throw new Error('Supabase nao configurado. O app precisa estar online para acessar o banco.');
+    throw new Error('Banco online nao configurado. O app precisa estar online para acessar os dados.');
   }
 }
 
@@ -244,7 +246,7 @@ async function garantirUsuarioRemoto(usuario) {
     data = consultaPorMatricula.data;
   }
 
-  if (!data) throw new Error('Sessao local nao encontrada no Supabase. Cadastre a matricula e aguarde a aprovacao do admin.');
+  if (!data) throw new Error('Sessao nao encontrada. Cadastre a matricula e aguarde a aprovacao do admin.');
 
   const usuarioRemoto = normalizarUsuario(data);
   if (!usuarioRemoto.admin && !usuarioRemoto.aprovado) {
@@ -345,7 +347,7 @@ export async function cadastrarUsuario({ matricula, telefone, nome }) {
   }
 
   if (!nomeUsuarioValido(nomeLimpo)) {
-    throw new Error('Informe o nome da pessoa.');
+    throw new Error('Informe o primeiro nome.');
   }
 
   if (!telefoneValido(telefoneLimpo)) {
@@ -653,7 +655,7 @@ export async function carregarPreferenciasUsuario(usuario, fallback = {}) {
     .maybeSingle();
 
   if (error) {
-    throw new Error(`Nao foi possivel carregar preferencias no Supabase: ${error.message}`);
+    throw new Error(`Nao foi possivel carregar preferencias online: ${error.message}`);
   }
 
   if (!data) {
@@ -681,7 +683,7 @@ export async function salvarPreferenciasUsuario(usuario, preferencias) {
   const { error } = await supabase.from('preferencias_usuario').upsert(payload, { onConflict: 'usuario_id' });
 
   if (error) {
-    throw new Error(`Nao foi possivel salvar preferencias no Supabase: ${error.message}`);
+    throw new Error(`Nao foi possivel salvar preferencias online: ${error.message}`);
   }
 }
 
@@ -720,7 +722,7 @@ export async function atualizarNomeUsuario(usuario, nome) {
   const nomeLimpo = normalizarNomePessoa(nome);
 
   if (!nomeUsuarioValido(nomeLimpo)) {
-    throw new Error('Informe o nome da pessoa.');
+    throw new Error('Informe o primeiro nome.');
   }
 
   const usuarioBanco = await garantirUsuarioRemoto(usuario);
@@ -733,7 +735,7 @@ export async function atualizarNomeUsuario(usuario, nome) {
 
   if (error) {
     if (erroColunaNomeAusente(error)) {
-      throw new Error('Atualize a tabela usuarios no Supabase para salvar o nome.');
+      throw new Error('Atualize a tabela de usuarios no banco online para salvar o nome.');
     }
 
     throw new Error(error.message);
@@ -853,7 +855,7 @@ export async function removerUsuario(usuario, administrador) {
       .maybeSingle();
 
     if (updateError) throw new Error(updateError.message);
-    if (!usuarioAtualizado) throw new Error('O Supabase nao confirmou a exclusao do usuario.');
+    if (!usuarioAtualizado) throw new Error('O banco online nao confirmou a exclusao do usuario.');
   }
 
   return usuarioBanco;
