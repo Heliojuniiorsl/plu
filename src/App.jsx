@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  BellRing,
   Calculator,
   CalendarCheck,
   CheckCircle2,
@@ -179,6 +180,23 @@ const statusOrdem = [
 
 const legacyStoragePrefix = 'semVencer.';
 const sessaoUsuarioStorageKey = 'semvencer.sessao.usuario';
+const notificacoesStorageKey = 'semvencer.notificacoes';
+
+const notificacoesPadrao = {
+  enabled: false,
+  days: 3,
+  time: '08:00',
+};
+
+const opcoesDiasNotificacao = [
+  { value: 0, label: 'Hoje' },
+  { value: 1, label: 'Até 1 dia' },
+  { value: 3, label: 'Até 3 dias' },
+  { value: 5, label: 'Até 5 dias' },
+  { value: 10, label: 'Até 10 dias' },
+  { value: 15, label: 'Até 15 dias' },
+  { value: 30, label: 'Até 30 dias' },
+];
 
 const temasApp = [
   {
@@ -325,6 +343,76 @@ function normalizarTema(valor) {
 
 function carregarTemaInicial() {
   return 'claro';
+}
+
+function normalizarPreferenciasNotificacao(valor = {}) {
+  const days = Number(valor.days);
+  const time = String(valor.time || notificacoesPadrao.time);
+
+  return {
+    enabled: Boolean(valor.enabled),
+    days: Number.isFinite(days) ? Math.max(0, Math.min(30, Math.round(days))) : notificacoesPadrao.days,
+    time: /^\d{2}:\d{2}$/.test(time) ? time : notificacoesPadrao.time,
+  };
+}
+
+function carregarPreferenciasNotificacao() {
+  try {
+    const salvo = window.localStorage.getItem(notificacoesStorageKey);
+    return normalizarPreferenciasNotificacao(salvo ? JSON.parse(salvo) : notificacoesPadrao);
+  } catch (error) {
+    return notificacoesPadrao;
+  }
+}
+
+function salvarPreferenciasNotificacao(preferencias) {
+  try {
+    window.localStorage.setItem(notificacoesStorageKey, JSON.stringify(normalizarPreferenciasNotificacao(preferencias)));
+  } catch (error) {
+    console.warn('Nao foi possivel salvar notificacoes', error);
+  }
+}
+
+function bridgeNotificacoesAndroid() {
+  if (typeof window === 'undefined') return null;
+  return window.SemVencerAndroid || null;
+}
+
+function montarPayloadNotificacao(preferencias, itens) {
+  const config = normalizarPreferenciasNotificacao(preferencias);
+  const produtos = itens
+    .filter((item) => item.dias <= config.days)
+    .sort((a, b) => a.dias - b.dias || a.produto.localeCompare(b.produto))
+    .slice(0, 40)
+    .map((item) => ({
+      produto: item.produto,
+      plu: item.plu,
+      validade: item.validade,
+      dias: item.dias,
+      prazo: textoDiasTabela(item.dias),
+      tipo: item.tipo,
+      local: item.setor,
+    }));
+
+  return {
+    ...config,
+    total: produtos.length,
+    generatedAt: new Date().toISOString(),
+    products: produtos,
+  };
+}
+
+function sincronizarNotificacoesAndroid(preferencias, itens) {
+  const bridge = bridgeNotificacoesAndroid();
+  if (!bridge?.configureNotifications) return false;
+
+  try {
+    bridge.configureNotifications(JSON.stringify(montarPayloadNotificacao(preferencias, itens)));
+    return true;
+  } catch (error) {
+    console.warn('Nao foi possivel configurar notificacoes no APK', error);
+    return false;
+  }
 }
 
 function normalizarValidadesSalvas(itens) {
@@ -634,6 +722,8 @@ function App() {
   const [temaAtual, setTemaAtual] = useState(carregarTemaInicial);
   const [authErro, setAuthErro] = useState('');
   const [authMensagem, setAuthMensagem] = useState('');
+  const [notificacaoMensagem, setNotificacaoMensagem] = useState('');
+  const [preferenciasNotificacao, setPreferenciasNotificacao] = useState(carregarPreferenciasNotificacao);
   const [sincronizando, setSincronizando] = useState(false);
   const [tentativaSincronizacao, setTentativaSincronizacao] = useState(0);
   const [dadosRemotosCarregados, setDadosRemotosCarregados] = useState(false);
@@ -1110,6 +1200,22 @@ function App() {
     });
   }, [buscaValidade, filtroValidade, validadesTratadas]);
 
+  const produtosNotificacao = useMemo(
+    () => montarPayloadNotificacao(preferenciasNotificacao, validadesTratadas).products,
+    [preferenciasNotificacao, validadesTratadas],
+  );
+  const notificacoesApkDisponiveis = Boolean(bridgeNotificacoesAndroid());
+
+  useEffect(() => {
+    salvarPreferenciasNotificacao(preferenciasNotificacao);
+
+    if (!usuarioAtual || !usuarioPodeAcessar(usuarioAtual) || !dadosRemotosCarregados) {
+      return;
+    }
+
+    sincronizarNotificacoesAndroid(preferenciasNotificacao, validadesTratadas);
+  }, [dadosRemotosCarregados, preferenciasNotificacao, usuarioAtual, validadesTratadas]);
+
   async function entrarComMatricula(matricula) {
     setSincronizando(true);
     setAuthErro('');
@@ -1471,6 +1577,33 @@ function App() {
     setSecoesSelecionadas([]);
   }
 
+  function atualizarPreferenciasNotificacao(campo, valor) {
+    setPreferenciasNotificacao((atuais) =>
+      normalizarPreferenciasNotificacao({
+        ...atuais,
+        [campo]: valor,
+      }),
+    );
+    setNotificacaoMensagem('');
+  }
+
+  function enviarNotificacaoTeste() {
+    const bridge = bridgeNotificacoesAndroid();
+
+    if (!bridge?.testNotification) {
+      setNotificacaoMensagem('Disponivel quando abrir pelo APK.');
+      return;
+    }
+
+    try {
+      bridge.testNotification(JSON.stringify(montarPayloadNotificacao(preferenciasNotificacao, validadesTratadas)));
+      setNotificacaoMensagem('Notificacao de teste enviada.');
+    } catch (error) {
+      console.warn('Nao foi possivel enviar teste de notificacao', error);
+      setNotificacaoMensagem('Nao foi possivel enviar o teste agora.');
+    }
+  }
+
   const pageProps = {
     resumoValidades,
     statusResumoCards,
@@ -1524,6 +1657,12 @@ function App() {
     temaAtual,
     setTemaAtual,
     temas: temasApp,
+    preferenciasNotificacao,
+    atualizarPreferenciasNotificacao,
+    produtosNotificacao,
+    notificacoesApkDisponiveis,
+    notificacaoMensagem,
+    enviarNotificacaoTeste,
     sincronizando,
     usuariosPendentes,
     usuariosAdmin,
@@ -2453,10 +2592,17 @@ function ConfiguracaoPage({
   produtosVisiveisTotal,
   alternarSecaoProduto,
   usarTodasSecoesProdutos,
+  preferenciasNotificacao,
+  atualizarPreferenciasNotificacao,
+  produtosNotificacao,
+  notificacoesApkDisponiveis,
+  notificacaoMensagem,
+  enviarNotificacaoTeste,
 }) {
   const usandoTodasSecoes = secoesSelecionadas.length === 0;
   const totalUsuarios = usuariosAdmin.length;
   const totalPendentes = usuariosPendentes.length;
+  const notificacoesAtivas = preferenciasNotificacao.enabled;
 
   return (
     <div className="page-grid">
@@ -2493,6 +2639,63 @@ function ConfiguracaoPage({
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="settings-panel notification-panel">
+        <div className="section-heading">
+          <div>
+            <span>Alertas</span>
+            <h3>Notificacoes</h3>
+          </div>
+          <BellRing size={22} />
+        </div>
+
+        <div className="notification-toggle-row">
+          <button
+            type="button"
+            className={notificacoesAtivas ? 'active' : ''}
+            onClick={() => atualizarPreferenciasNotificacao('enabled', !notificacoesAtivas)}
+          >
+            <BellRing size={18} />
+            <span>{notificacoesAtivas ? 'Alertas ativos' : 'Alertas desligados'}</span>
+          </button>
+          <strong>{notificacoesApkDisponiveis ? 'APK conectado' : 'Somente no APK'}</strong>
+        </div>
+
+        <div className="notification-grid">
+          <label>
+            <span>Alertar</span>
+            <select
+              value={preferenciasNotificacao.days}
+              onChange={(event) => atualizarPreferenciasNotificacao('days', Number(event.target.value))}
+            >
+              {opcoesDiasNotificacao.map((opcao) => (
+                <option value={opcao.value} key={opcao.value}>
+                  {opcao.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Horario</span>
+            <input
+              type="time"
+              value={preferenciasNotificacao.time}
+              onChange={(event) => atualizarPreferenciasNotificacao('time', event.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="notification-preview">
+          <span>Produtos no alerta</span>
+          <strong>{produtosNotificacao.length}</strong>
+        </div>
+
+        <button className="notification-test-button" type="button" onClick={enviarNotificacaoTeste}>
+          Enviar teste
+        </button>
+
+        {notificacaoMensagem && <div className="sync-note">{notificacaoMensagem}</div>}
       </section>
 
       <section className="settings-panel">

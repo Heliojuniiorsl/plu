@@ -1,8 +1,11 @@
 package com.example.semvencer
 
 import android.annotation.SuppressLint
+import android.Manifest
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -45,6 +48,7 @@ class MainActivity : ComponentActivity() {
             }
 
             clearCache(false)
+            addJavascriptInterface(SemVencerNotificationBridge(this@MainActivity), "SemVencerAndroid")
             webChromeClient = WebChromeClient()
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(
@@ -150,6 +154,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+
+        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_REQUEST)
+    }
+
     override fun onDestroy() {
         webView.destroy()
         super.onDestroy()
@@ -160,5 +171,6 @@ class MainActivity : ComponentActivity() {
         private const val WEB_APP_URL = "https://heliojuniiorsl.github.io/semvencer/"
         private const val LOCAL_FALLBACK_URL = "https://$APP_HOST/#/"
         private const val WEB_ASSET_DIR = "semvencer"
+        private const val NOTIFICATION_PERMISSION_REQUEST = 5041
     }
 }

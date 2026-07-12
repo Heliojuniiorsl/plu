@@ -1308,6 +1308,96 @@ button {
   font-weight: 900;
 }
 
+.notification-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.notification-toggle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.notification-toggle-row button,
+.notification-test-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+  border: 1px solid #cbd6e2;
+  background: #ffffff;
+  color: #475569;
+  font-weight: 950;
+}
+
+.notification-toggle-row button.active {
+  border-color: rgba(15, 118, 110, 0.42);
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(217, 164, 65, 0.12));
+  color: #0f766e;
+}
+
+.notification-toggle-row strong {
+  padding: 9px 10px;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.notification-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr);
+  gap: 8px;
+}
+
+.notification-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.notification-grid span,
+.notification-preview span {
+  color: #687587;
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.notification-grid select,
+.notification-grid input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #dce4ee;
+  background: #f8fafc;
+  color: #151f2d;
+  font-weight: 900;
+}
+
+.notification-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #dce4ee;
+  background: #f8fafc;
+}
+
+.notification-preview strong {
+  color: #151f2d;
+  font-size: 18px;
+  font-weight: 1000;
+}
+
 .sync-note {
   margin-top: 10px;
   padding: 10px 12px;
@@ -4333,10 +4423,13 @@ button {
 :root .validade-form input,
 :root .validade-form select,
 :root .compact-row select,
+:root .notification-grid select,
+:root .notification-grid input,
 :root .local-toggle button,
 :root .unit-toggle button,
 :root .sheet-close,
 :root .session-panel div,
+:root .notification-preview,
 :root .detail-info-box,
 :root .section-selector-status,
 :root .empty-access {
@@ -4352,7 +4445,9 @@ button {
 :root .validade-form input:focus,
 :root .validade-form select:focus,
 :root .sheet-form input:focus,
-:root .compact-row select:focus {
+:root .compact-row select:focus,
+:root .notification-grid select:focus,
+:root .notification-grid input:focus {
   border-color: var(--google-blue);
   box-shadow: 0 0 0 3px rgba(11, 87, 208, 0.14);
 }
@@ -4376,6 +4471,8 @@ button {
 :root .section-options button,
 :root .admin-user-card,
 :root .user-activity-list li,
+:root .notification-toggle-row button,
+:root .notification-test-button,
 :root .category-sheet-options button {
   background: var(--google-surface-soft);
   border-color: var(--google-border);
@@ -4387,7 +4484,8 @@ button {
 :root .section-options button.active,
 :root .category-sheet-options button.active,
 :root .local-toggle button.active,
-:root .unit-toggle button.active {
+:root .unit-toggle button.active,
+:root .notification-toggle-row button.active {
   background: var(--google-blue-soft);
   border-color: #a8c7fa;
   color: var(--google-blue);
