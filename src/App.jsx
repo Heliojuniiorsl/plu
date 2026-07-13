@@ -181,6 +181,7 @@ const statusOrdem = [
 const legacyStoragePrefix = 'semVencer.';
 const sessaoUsuarioStorageKey = 'semvencer.sessao.usuario';
 const notificacoesStorageKey = 'semvencer.notificacoes';
+const notificacoesBrowserUltimoEnvioKey = 'semvencer.notificacoes.browser.ultimoEnvio';
 
 const notificacoesPadrao = {
   enabled: false,
@@ -378,6 +379,54 @@ function bridgeNotificacoesAndroid() {
   return window.SemVencerAndroid || null;
 }
 
+function notificacoesBrowserDisponiveis() {
+  return typeof window !== 'undefined' && 'Notification' in window;
+}
+
+function dataLocalHoje() {
+  const data = new Date();
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+function minutosDoHorario(horario) {
+  const [hora, minuto] = String(horario || '08:00').split(':').map((parte) => Number(parte));
+  return (Number.isFinite(hora) ? hora : 8) * 60 + (Number.isFinite(minuto) ? minuto : 0);
+}
+
+function minutosAgora() {
+  const data = new Date();
+  return data.getHours() * 60 + data.getMinutes();
+}
+
+async function solicitarPermissaoNotificacaoBrowser() {
+  if (!notificacoesBrowserDisponiveis()) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+
+  const permissao = await Notification.requestPermission();
+  return permissao === 'granted';
+}
+
+async function registrarServiceWorkerNotificacao() {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || appEmArquivoLocal) {
+    return null;
+  }
+
+  try {
+    const base = basePath || '';
+    const scope = base ? `${base}/` : '/';
+    const swUrl = `${base}/semvencer-sw.js`;
+    await navigator.serviceWorker.register(swUrl, { scope });
+    return navigator.serviceWorker.ready;
+  } catch (error) {
+    console.warn('Nao foi possivel preparar notificacoes do navegador', error);
+    return null;
+  }
+}
+
 function montarPayloadNotificacao(preferencias, itens) {
   const config = normalizarPreferenciasNotificacao(preferencias);
   const produtos = itens
@@ -400,6 +449,67 @@ function montarPayloadNotificacao(preferencias, itens) {
     generatedAt: new Date().toISOString(),
     products: produtos,
   };
+}
+
+function textoNotificacaoPayload(payload) {
+  const total = payload.products.length;
+  const title = total === 1 ? '1 produto em alerta' : `${total} produtos em alerta`;
+  const body =
+    total > 0
+      ? payload.products
+          .slice(0, 5)
+          .map((produto) => `${produto.produto} - ${produto.prazo}`)
+          .join('\n')
+      : `Nenhum produto vencendo em ate ${payload.days} dia(s).`;
+
+  return { title, body };
+}
+
+async function enviarNotificacaoBrowser(payload, force = false) {
+  if (!notificacoesBrowserDisponiveis()) return false;
+  if (!force && (!payload.enabled || payload.products.length === 0)) return false;
+  if (Notification.permission !== 'granted') return false;
+
+  const { title, body } = textoNotificacaoPayload(payload);
+  const icon = `${basePath || ''}/icone.png`;
+  const options = {
+    body,
+    icon,
+    badge: icon,
+    tag: 'semvencer-validade-alerta',
+    renotify: true,
+  };
+
+  const registration = await registrarServiceWorkerNotificacao();
+  if (registration?.showNotification) {
+    await registration.showNotification(title, options);
+    return true;
+  }
+
+  const notification = new Notification(title, options);
+  notification.onclick = () => {
+    window.focus();
+    notification.close();
+  };
+  return true;
+}
+
+async function enviarNotificacaoBrowserNoHorario(preferencias, itens) {
+  const config = normalizarPreferenciasNotificacao(preferencias);
+  if (!config.enabled || minutosAgora() < minutosDoHorario(config.time)) return false;
+
+  const chaveHoje = `${dataLocalHoje()}-${config.time}-${config.days}`;
+  if (window.localStorage.getItem(notificacoesBrowserUltimoEnvioKey) === chaveHoje) {
+    return false;
+  }
+
+  const payload = montarPayloadNotificacao(config, itens);
+  const enviada = await enviarNotificacaoBrowser(payload);
+  if (enviada) {
+    window.localStorage.setItem(notificacoesBrowserUltimoEnvioKey, chaveHoje);
+  }
+
+  return enviada;
 }
 
 function sincronizarNotificacoesAndroid(preferencias, itens) {
@@ -1205,6 +1315,12 @@ function App() {
     [preferenciasNotificacao, validadesTratadas],
   );
   const notificacoesApkDisponiveis = Boolean(bridgeNotificacoesAndroid());
+  const notificacoesBrowserAtivas = notificacoesBrowserDisponiveis();
+  const canalNotificacao = notificacoesApkDisponiveis
+    ? 'APK conectado'
+    : notificacoesBrowserAtivas
+      ? 'Navegador conectado'
+      : 'Sem suporte';
 
   useEffect(() => {
     salvarPreferenciasNotificacao(preferenciasNotificacao);
@@ -1215,6 +1331,41 @@ function App() {
 
     sincronizarNotificacoesAndroid(preferenciasNotificacao, validadesTratadas);
   }, [dadosRemotosCarregados, preferenciasNotificacao, usuarioAtual, validadesTratadas]);
+
+  useEffect(() => {
+    if (
+      notificacoesApkDisponiveis ||
+      !notificacoesBrowserAtivas ||
+      !usuarioAtual ||
+      !usuarioPodeAcessar(usuarioAtual) ||
+      !dadosRemotosCarregados ||
+      !preferenciasNotificacao.enabled
+    ) {
+      return undefined;
+    }
+
+    let cancelado = false;
+    const verificar = () => {
+      if (cancelado) return;
+      enviarNotificacaoBrowserNoHorario(preferenciasNotificacao, validadesTratadas).catch((error) => {
+        console.warn('Nao foi possivel verificar notificacoes do navegador', error);
+      });
+    };
+
+    verificar();
+    const intervalo = window.setInterval(verificar, 60000);
+    return () => {
+      cancelado = true;
+      window.clearInterval(intervalo);
+    };
+  }, [
+    dadosRemotosCarregados,
+    notificacoesApkDisponiveis,
+    notificacoesBrowserAtivas,
+    preferenciasNotificacao,
+    usuarioAtual,
+    validadesTratadas,
+  ]);
 
   async function entrarComMatricula(matricula) {
     setSincronizando(true);
@@ -1585,23 +1736,44 @@ function App() {
       }),
     );
     setNotificacaoMensagem('');
+
+    if (campo === 'enabled' && valor && !bridgeNotificacoesAndroid() && notificacoesBrowserDisponiveis()) {
+      solicitarPermissaoNotificacaoBrowser()
+        .then((permitido) => {
+          setNotificacaoMensagem(permitido ? 'Notificacoes do navegador ativadas.' : 'Permita notificacoes no navegador.');
+        })
+        .catch(() => setNotificacaoMensagem('Nao foi possivel pedir permissao agora.'));
+    }
   }
 
-  function enviarNotificacaoTeste() {
+  async function enviarNotificacaoTeste() {
     const bridge = bridgeNotificacoesAndroid();
+    const payload = montarPayloadNotificacao(preferenciasNotificacao, validadesTratadas);
 
-    if (!bridge?.testNotification) {
-      setNotificacaoMensagem('Disponivel quando abrir pelo APK.');
+    if (bridge?.testNotification) {
+      try {
+        bridge.testNotification(JSON.stringify(payload));
+        setNotificacaoMensagem('Notificacao de teste enviada.');
+      } catch (error) {
+        console.warn('Nao foi possivel enviar teste de notificacao', error);
+        setNotificacaoMensagem('Nao foi possivel enviar o teste agora.');
+      }
       return;
     }
 
-    try {
-      bridge.testNotification(JSON.stringify(montarPayloadNotificacao(preferenciasNotificacao, validadesTratadas)));
-      setNotificacaoMensagem('Notificacao de teste enviada.');
-    } catch (error) {
-      console.warn('Nao foi possivel enviar teste de notificacao', error);
-      setNotificacaoMensagem('Nao foi possivel enviar o teste agora.');
+    if (!notificacoesBrowserDisponiveis()) {
+      setNotificacaoMensagem('Este navegador nao suporta notificacoes.');
+      return;
     }
+
+    const permitido = await solicitarPermissaoNotificacaoBrowser();
+    if (!permitido) {
+      setNotificacaoMensagem('Permita notificacoes no navegador.');
+      return;
+    }
+
+    const enviada = await enviarNotificacaoBrowser(payload, true);
+    setNotificacaoMensagem(enviada ? 'Notificacao de teste enviada.' : 'Nao foi possivel enviar o teste agora.');
   }
 
   const pageProps = {
@@ -1661,6 +1833,7 @@ function App() {
     atualizarPreferenciasNotificacao,
     produtosNotificacao,
     notificacoesApkDisponiveis,
+    canalNotificacao,
     notificacaoMensagem,
     enviarNotificacaoTeste,
     sincronizando,
@@ -2596,6 +2769,7 @@ function ConfiguracaoPage({
   atualizarPreferenciasNotificacao,
   produtosNotificacao,
   notificacoesApkDisponiveis,
+  canalNotificacao,
   notificacaoMensagem,
   enviarNotificacaoTeste,
 }) {
@@ -2659,7 +2833,7 @@ function ConfiguracaoPage({
             <BellRing size={18} />
             <span>{notificacoesAtivas ? 'Alertas ativos' : 'Alertas desligados'}</span>
           </button>
-          <strong>{notificacoesApkDisponiveis ? 'APK conectado' : 'Somente no APK'}</strong>
+          <strong>{canalNotificacao}</strong>
         </div>
 
         <div className="notification-grid">
