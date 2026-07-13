@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -21,11 +22,13 @@ data class ProdutoNotificacao(
     val plu: String,
     val validade: String,
     val prazo: String,
+    val dias: Int,
 )
 
 data class ConfigNotificacao(
     val enabled: Boolean,
     val days: Int,
+    val frequency: String,
     val time: String,
     val products: List<ProdutoNotificacao>,
 )
@@ -87,10 +90,12 @@ object SemVencerNotifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        alarmManager.cancel(pendingIntent)
+        val hourly = config.frequency == "hourly"
         alarmManager.setInexactRepeating(
             AlarmManager.RTC_WAKEUP,
-            nextTriggerAt(config.time),
-            AlarmManager.INTERVAL_DAY,
+            if (hourly) nextHourlyTriggerAt() else nextDailyTriggerAt(config.time),
+            if (hourly) AlarmManager.INTERVAL_HOUR else AlarmManager.INTERVAL_DAY,
             pendingIntent,
         )
     }
@@ -112,15 +117,19 @@ object SemVencerNotifications {
         if (!force && config.products.isEmpty()) return
 
         val total = config.products.size
-        val title = if (total == 1) "1 produto em alerta" else "$total produtos em alerta"
-        val summary = config.products.firstOrNull()?.let { "${it.produto} - ${it.prazo}" }
-            ?: "Nenhum produto dentro do prazo configurado."
-        val details = if (config.products.isEmpty()) {
-            "Nenhum produto vencendo em ate ${config.days} dia(s)."
-        } else {
-            config.products.take(6).joinToString("\n") { produto ->
-                "${produto.produto} - ${produto.prazo} - ${produto.validade}"
-            }
+        val title = if (total == 1) "1 produto precisa de atencao" else "$total produtos precisam de atencao"
+        val summary = resumoAlertas(config.products).ifBlank {
+            "Nenhum produto dentro do prazo configurado."
+        }
+        val inboxStyle = NotificationCompat.InboxStyle()
+            .setBigContentTitle(title)
+            .setSummaryText("Toque para abrir as validades")
+
+        config.products.take(3).forEach { produto ->
+            inboxStyle.addLine("${nomeResumido(produto.produto)} - ${produto.prazo}")
+        }
+        if (total > 3) {
+            inboxStyle.addLine("E mais ${total - 3} produto(s)")
         }
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
@@ -137,7 +146,9 @@ object SemVencerNotifications {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(summary)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(details))
+            .setStyle(inboxStyle)
+            .setColor(Color.rgb(26, 115, 232))
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
@@ -165,7 +176,7 @@ object SemVencerNotifications {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun nextTriggerAt(time: String): Long {
+    private fun nextDailyTriggerAt(time: String): Long {
         val parts = time.split(":")
         val hour = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 8
         val minute = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0
@@ -183,6 +194,32 @@ object SemVencerNotifications {
         return calendar.timeInMillis
     }
 
+    private fun nextHourlyTriggerAt(): Long {
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.HOUR_OF_DAY, 1)
+        }
+        return calendar.timeInMillis
+    }
+
+    private fun resumoAlertas(products: List<ProdutoNotificacao>): String {
+        val vencidos = products.count { it.dias < 0 }
+        val hoje = products.count { it.dias == 0 }
+        val proximos = products.size - vencidos - hoje
+        return listOfNotNull(
+            if (vencidos > 0) "$vencidos ${if (vencidos == 1) "vencido" else "vencidos"}" else null,
+            if (hoje > 0) "$hoje ${if (hoje == 1) "vence hoje" else "vencem hoje"}" else null,
+            if (proximos > 0) "$proximos ${if (proximos == 1) "proximo" else "proximos"}" else null,
+        ).joinToString(" - ")
+    }
+
+    private fun nomeResumido(nome: String): String {
+        val limite = 34
+        return if (nome.length > limite) "${nome.take(limite - 3)}..." else nome
+    }
+
     private fun parseConfig(json: String): ConfigNotificacao {
         val obj = runCatching { JSONObject(json) }.getOrElse { JSONObject() }
         val productsArray = obj.optJSONArray("products") ?: JSONArray()
@@ -193,12 +230,14 @@ object SemVencerNotifications {
                 plu = item.optString("plu", ""),
                 validade = item.optString("validade", ""),
                 prazo = item.optString("prazo", ""),
+                dias = item.optInt("dias", 0),
             )
         }
 
         return ConfigNotificacao(
             enabled = obj.optBoolean("enabled", false),
             days = obj.optInt("days", 3),
+            frequency = if (obj.optString("frequency") == "hourly") "hourly" else "daily",
             time = obj.optString("time", "08:00"),
             products = products,
         )

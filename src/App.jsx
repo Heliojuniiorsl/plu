@@ -186,6 +186,7 @@ const notificacoesBrowserUltimoEnvioKey = 'semvencer.notificacoes.browser.ultimo
 const notificacoesPadrao = {
   enabled: false,
   days: 3,
+  frequency: 'daily',
   time: '08:00',
 };
 
@@ -349,10 +350,12 @@ function carregarTemaInicial() {
 function normalizarPreferenciasNotificacao(valor = {}) {
   const days = Number(valor.days);
   const time = String(valor.time || notificacoesPadrao.time);
+  const frequency = valor.frequency === 'hourly' ? 'hourly' : 'daily';
 
   return {
     enabled: Boolean(valor.enabled),
     days: Number.isFinite(days) ? Math.max(0, Math.min(30, Math.round(days))) : notificacoesPadrao.days,
+    frequency,
     time: /^\d{2}:\d{2}$/.test(time) ? time : notificacoesPadrao.time,
   };
 }
@@ -399,6 +402,10 @@ function minutosDoHorario(horario) {
 function minutosAgora() {
   const data = new Date();
   return data.getHours() * 60 + data.getMinutes();
+}
+
+function horaAtual() {
+  return new Date().getHours();
 }
 
 async function solicitarPermissaoNotificacaoBrowser() {
@@ -453,16 +460,21 @@ function montarPayloadNotificacao(preferencias, itens) {
 
 function textoNotificacaoPayload(payload) {
   const total = payload.products.length;
-  const title = total === 1 ? '1 produto em alerta' : `${total} produtos em alerta`;
-  const body =
-    total > 0
-      ? payload.products
-          .slice(0, 5)
-          .map((produto) => `${produto.produto} - ${produto.prazo}`)
-          .join('\n')
-      : `Nenhum produto vencendo em ate ${payload.days} dia(s).`;
+  const vencidos = payload.products.filter((produto) => produto.dias < 0).length;
+  const vencemHoje = payload.products.filter((produto) => produto.dias === 0).length;
+  const proximos = total - vencidos - vencemHoje;
+  const resumo = [
+    vencidos > 0 && `${vencidos} ${vencidos === 1 ? 'vencido' : 'vencidos'}`,
+    vencemHoje > 0 && `${vencemHoje} ${vencemHoje === 1 ? 'vence hoje' : 'vencem hoje'}`,
+    proximos > 0 && `${proximos} ${proximos === 1 ? 'proximo' : 'proximos'}`,
+  ]
+    .filter(Boolean)
+    .join(' • ');
 
-  return { title, body };
+  return {
+    title: total === 1 ? '1 produto precisa de atencao' : `${total} produtos precisam de atencao`,
+    body: resumo || `Nenhum produto vencendo em ate ${payload.days} dia(s).`,
+  };
 }
 
 async function enviarNotificacaoBrowser(payload, force = false) {
@@ -496,17 +508,23 @@ async function enviarNotificacaoBrowser(payload, force = false) {
 
 async function enviarNotificacaoBrowserNoHorario(preferencias, itens) {
   const config = normalizarPreferenciasNotificacao(preferencias);
-  if (!config.enabled || minutosAgora() < minutosDoHorario(config.time)) return false;
+  if (!config.enabled) return false;
 
-  const chaveHoje = `${dataLocalHoje()}-${config.time}-${config.days}`;
-  if (window.localStorage.getItem(notificacoesBrowserUltimoEnvioKey) === chaveHoje) {
+  const envioPorHora = config.frequency === 'hourly';
+  if (envioPorHora && new Date().getMinutes() > 5) return false;
+  if (!envioPorHora && minutosAgora() < minutosDoHorario(config.time)) return false;
+
+  const chaveEnvio = envioPorHora
+    ? `${dataLocalHoje()}-${horaAtual()}-${config.days}-hourly`
+    : `${dataLocalHoje()}-${config.time}-${config.days}-daily`;
+  if (window.localStorage.getItem(notificacoesBrowserUltimoEnvioKey) === chaveEnvio) {
     return false;
   }
 
   const payload = montarPayloadNotificacao(config, itens);
   const enviada = await enviarNotificacaoBrowser(payload);
   if (enviada) {
-    window.localStorage.setItem(notificacoesBrowserUltimoEnvioKey, chaveHoje);
+    window.localStorage.setItem(notificacoesBrowserUltimoEnvioKey, chaveEnvio);
   }
 
   return enviada;
@@ -2777,6 +2795,10 @@ function ConfiguracaoPage({
   const totalUsuarios = usuariosAdmin.length;
   const totalPendentes = usuariosPendentes.length;
   const notificacoesAtivas = preferenciasNotificacao.enabled;
+  const agendaNotificacao =
+    preferenciasNotificacao.frequency === 'hourly'
+      ? 'De hora em hora'
+      : `Todos os dias as ${preferenciasNotificacao.time}`;
 
   return (
     <div className="page-grid">
@@ -2850,19 +2872,49 @@ function ConfiguracaoPage({
               ))}
             </select>
           </label>
-          <label>
-            <span>Horario</span>
-            <input
-              type="time"
-              value={preferenciasNotificacao.time}
-              onChange={(event) => atualizarPreferenciasNotificacao('time', event.target.value)}
-            />
-          </label>
+          {preferenciasNotificacao.frequency === 'daily' && (
+            <label>
+              <span>Horario</span>
+              <input
+                type="time"
+                value={preferenciasNotificacao.time}
+                onChange={(event) => atualizarPreferenciasNotificacao('time', event.target.value)}
+              />
+            </label>
+          )}
+        </div>
+
+        <div className="notification-frequency">
+          <span>Quando enviar</span>
+          <div role="group" aria-label="Frequencia das notificacoes">
+            <button
+              type="button"
+              className={preferenciasNotificacao.frequency === 'daily' ? 'active' : ''}
+              onClick={() => atualizarPreferenciasNotificacao('frequency', 'daily')}
+            >
+              <Clock3 size={17} />
+              Hora especifica
+            </button>
+            <button
+              type="button"
+              className={preferenciasNotificacao.frequency === 'hourly' ? 'active' : ''}
+              onClick={() => atualizarPreferenciasNotificacao('frequency', 'hourly')}
+            >
+              <BellRing size={17} />
+              De hora em hora
+            </button>
+          </div>
         </div>
 
         <div className="notification-preview">
-          <span>Produtos no alerta</span>
-          <strong>{produtosNotificacao.length}</strong>
+          <div>
+            <span>Produtos no alerta</span>
+            <strong>{produtosNotificacao.length}</strong>
+          </div>
+          <div>
+            <span>Envio</span>
+            <strong className="notification-schedule-label">{agendaNotificacao}</strong>
+          </div>
         </div>
 
         <button className="notification-test-button" type="button" onClick={enviarNotificacaoTeste}>
