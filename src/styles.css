@@ -2936,6 +2936,36 @@ button {
   animation: sheetUp 0.18s ease-out;
 }
 
+.cadastro-sheet-backdrop {
+  align-items: flex-start;
+}
+
+.cadastro-sheet {
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-bottom: 16px;
+  border-radius: 0 0 18px 18px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.26);
+  animation: sheetDown 0.2s ease-out;
+}
+
+.cadastro-sheet-topbar {
+  position: relative;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+}
+
+.cadastro-sheet-topbar .sheet-handle {
+  margin: 0;
+}
+
+.cadastro-sheet-topbar .sheet-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
 .sheet-handle {
   width: 46px;
   height: 5px;
@@ -3175,6 +3205,18 @@ button {
   from {
     opacity: 0;
     transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheetDown {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
   }
 
   to {

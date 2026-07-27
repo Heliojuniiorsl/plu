@@ -879,7 +879,7 @@ function App() {
   const [novoItem, setNovoItem] = useState({
     produto: '',
     plu: '',
-    setor: '',
+    setor: 'Área de venda',
     tipo: '',
     quantidade: '',
     unidade: 'kg',
@@ -1562,7 +1562,7 @@ function App() {
     setNovoItem({
       produto: '',
       plu: '',
-      setor: '',
+      setor: 'Área de venda',
       tipo: '',
       quantidade: '',
       unidade: 'kg',
@@ -1606,6 +1606,11 @@ function App() {
     const pluFinal = codigoLimpo || 'Sem PLU';
     const quantidadeFinal = formatarQuantidade(novoItem.quantidade, novoItem.unidade);
     const tipoFinal = novoItem.tipo ? normalizarTipoProduto(novoItem.tipo) : inferirTipoConservacao(novoItem.produto);
+    const setorFinal = novoItem.tipo
+      ? novoItem.setor
+      : tipoFinal === 'CONG'
+        ? 'Câmara'
+        : 'Área de venda';
     const produtoFinal = novoItem.produto.trim();
 
     if (cadastroEdicaoId) {
@@ -1617,7 +1622,7 @@ function App() {
                 ...item,
                 produto: produtoFinal,
                 plu: pluFinal,
-                setor: novoItem.setor,
+                setor: setorFinal,
                 tipo: tipoFinal,
                 quantidade: quantidadeFinal,
                 validade: novoItem.validade,
@@ -1639,7 +1644,7 @@ function App() {
             quantidade: quantidadeFinal,
             validade: novoItem.validade,
             tipo: tipoFinal,
-            local: novoItem.setor,
+            local: setorFinal,
           },
         },
         rotaAtual,
@@ -1656,7 +1661,7 @@ function App() {
         produto: produtoFinal,
         plu: pluFinal,
         categoria: 'Cadastro',
-        setor: novoItem.setor,
+        setor: setorFinal,
         tipo: tipoFinal,
         lote: 'Cadastro manual',
         quantidade: quantidadeFinal,
@@ -1682,7 +1687,7 @@ function App() {
           quantidade: quantidadeFinal,
           validade: novoItem.validade,
           tipo: tipoFinal,
-          local: novoItem.setor,
+          local: setorFinal,
         },
       },
       rotaAtual,
@@ -3341,24 +3346,27 @@ function CadastroProdutoSheet({
     atualizarNovoItem('produto', produto.descricao);
     atualizarNovoItem('plu', produto.plu);
     atualizarNovoItem('unidade', inferirUnidadeProduto(produto.descricao));
+    const tipoProduto = inferirTipoConservacao(produto.descricao);
+    atualizarNovoItem('tipo', tipoProduto);
+    atualizarNovoItem('setor', tipoProduto === 'CONG' ? 'Câmara' : 'Área de venda');
     setMostrarSugestoes(false);
   }
 
   return (
-    <div className="bottom-sheet-backdrop" role="presentation" onClick={fecharCadastroProduto}>
+    <div
+      className="bottom-sheet-backdrop cadastro-sheet-backdrop"
+      role="presentation"
+      onClick={fecharCadastroProduto}
+    >
       <section
-        className="bottom-sheet"
+        className="bottom-sheet cadastro-sheet"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="cadastro-produto-titulo"
+        aria-label={cadastroEdicaoId ? 'Editar produto' : 'Cadastrar produto'}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sheet-handle" />
-        <div className="sheet-header">
-          <div>
-            <span>Cadastro rápido</span>
-            <h3 id="cadastro-produto-titulo">{cadastroEdicaoId ? 'Editar produto' : 'Novo produto'}</h3>
-          </div>
+        <div className="cadastro-sheet-topbar">
+          <div className="sheet-handle" aria-hidden="true" />
           <button className="sheet-close" onClick={fecharCadastroProduto} aria-label="Fechar cadastro">
             <X size={20} />
           </button>
@@ -3431,58 +3439,12 @@ function CadastroProdutoSheet({
 
             <label>
               Quantidade
-              <div className="quantity-input-row">
-                <input
-                  value={novoItem.quantidade}
-                  inputMode="decimal"
-                  onChange={(event) => atualizarNovoItem('quantidade', limparQuantidade(event.target.value))}
-                />
-                <div className="unit-toggle" aria-label="Unidade">
-                  {['kg', 'un'].map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      className={novoItem.unidade === item ? 'active' : ''}
-                      onClick={() => atualizarNovoItem('unidade', item)}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <input
+                value={novoItem.quantidade}
+                inputMode="decimal"
+                onChange={(event) => atualizarNovoItem('quantidade', limparQuantidade(event.target.value))}
+              />
             </label>
-          </div>
-
-          <div className="choice-row">
-            <span>Tipo</span>
-            <div className="local-toggle compact-toggle" aria-label="Tipo">
-              {['RESF', 'CONG'].map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className={novoItem.tipo === item ? 'active' : ''}
-                  onClick={() => atualizarNovoItem('tipo', item)}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="choice-row">
-            <span>Local</span>
-            <div className="local-toggle" aria-label="Local">
-              {['Área de venda', 'Câmara'].map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className={novoItem.setor === item ? 'active' : ''}
-                  onClick={() => atualizarNovoItem('setor', item)}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
           </div>
 
           <button className="primary-button sheet-submit" type="submit">
