@@ -3,6 +3,7 @@ import { supabase, supabaseConfigurado } from './supabaseClient';
 export const ADMIN_MATRICULA = '000000';
 export const CONTATO_LIBERACAO = '61998427629';
 const ROTA_USUARIO_EXCLUIDO = '__deleted__';
+const MARCADOR_VISUALIZACAO_VALIDADES = '__semvencer_visualizacao_validades:';
 
 function somenteDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
@@ -91,15 +92,23 @@ function normalizarPreferencias(preferencias = {}) {
     : Array.isArray(preferencias.secoes_selecionadas)
       ? preferencias.secoes_selecionadas
       : [];
+  const secoesNormalizadas = Array.from(
+    new Set(secoes.map((secao) => String(secao || '').trim()).filter(Boolean)),
+  );
+  const marcadorVisualizacao = secoesNormalizadas.find((secao) =>
+    secao.startsWith(MARCADOR_VISUALIZACAO_VALIDADES),
+  );
+  const visualizacaoMarcador = marcadorVisualizacao?.slice(MARCADOR_VISUALIZACAO_VALIDADES.length);
+  const visualizacaoCampo = preferencias.visualizacaoValidades ?? preferencias.visualizacao_validades;
 
   return {
-    secoesSelecionadas: Array.from(new Set(secoes.map((secao) => String(secao || '').trim()).filter(Boolean))),
+    secoesSelecionadas: secoesNormalizadas.filter(
+      (secao) => !secao.startsWith(MARCADOR_VISUALIZACAO_VALIDADES),
+    ),
     secoesConfiguradas: Boolean(preferencias.secoesConfiguradas ?? preferencias.secoes_configuradas),
     tema: ['claro', 'azul'].includes(preferencias.tema) ? preferencias.tema : 'claro',
     visualizacaoValidades:
-      (preferencias.visualizacaoValidades ?? preferencias.visualizacao_validades) === 'simples'
-        ? 'simples'
-        : 'tabela',
+      (visualizacaoMarcador || visualizacaoCampo) === 'simples' ? 'simples' : 'tabela',
   };
 }
 
@@ -702,6 +711,10 @@ export async function salvarPreferenciasUsuario(usuario, preferencias) {
 
   if (error && colunaVisualizacaoValidadesAusente(error)) {
     const { visualizacao_validades: _visualizacaoIgnorada, ...payloadCompativel } = payload;
+    payloadCompativel.secoes_selecionadas = [
+      ...preferenciasNormalizadas.secoesSelecionadas,
+      `${MARCADOR_VISUALIZACAO_VALIDADES}${preferenciasNormalizadas.visualizacaoValidades}`,
+    ];
     ({ error } = await supabase.from('preferencias_usuario').upsert(payloadCompativel, {
       onConflict: 'usuario_id',
     }));
