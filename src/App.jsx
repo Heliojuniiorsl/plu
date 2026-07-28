@@ -18,6 +18,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Table2,
   Trash2,
   X,
   XCircle,
@@ -2567,6 +2568,14 @@ function ValidadesPage({
                 <Grid3x3 size={18} />
               </button>
               <button
+                className={visualizacaoValidades === 'simples' ? 'active' : ''}
+                onClick={() => setVisualizacaoValidades('simples')}
+                title="Visualizar tabela compacta"
+                type="button"
+              >
+                <Table2 size={18} />
+              </button>
+              <button
                 className={filtroAtivo ? 'active' : ''}
                 onClick={() => setFiltroAberto(true)}
                 title="Filtrar validades"
@@ -2594,6 +2603,8 @@ function ValidadesPage({
                 />
               ))}
             </div>
+          ) : visualizacaoValidades === 'simples' ? (
+            <ProdutoCadastroTabelaSimples itens={validadesFiltradas} onView={setProdutoDetalhe} />
           ) : (
             <ProdutoCadastroTabela
               itens={validadesFiltradas}
@@ -3536,6 +3547,35 @@ function ProdutoCadastroTabela({ itens, onView }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function ProdutoCadastroTabelaSimples({ itens, onView }) {
+  return (
+    <div className="validade-tabela-simples" role="table" aria-label="Tabela compacta de produtos">
+      <div className="validade-tabela-simples-header" role="row">
+        <span role="columnheader">PLU</span>
+        <span role="columnheader">Nome</span>
+        <span role="columnheader">Validade</span>
+      </div>
+      {itens.map((item) => {
+        const config = statusConfig[item.status];
+
+        return (
+          <button
+            className={`validade-tabela-simples-row tone-${config.tone}`}
+            key={item.id}
+            type="button"
+            onClick={() => onView(item)}
+            aria-label={`${item.plu}, ${item.produto}, validade ${formatarDataCurta(item.validade)}`}
+          >
+            <b>{item.plu}</b>
+            <span>{item.produto}</span>
+            <time dateTime={item.validade}>{formatarDataCurta(item.validade)}</time>
+          </button>
+        );
+      })}
     </div>
   );
 }
