@@ -761,8 +761,7 @@ function textoDiasTabela(dias) {
 function textoDiasCompacto(dias) {
   if (dias < 0) return `${Math.abs(dias)}d venc.`;
   if (dias === 0) return 'Hoje';
-  if (dias === 1) return '1 dia';
-  return `${dias} dias`;
+  return `${dias}d`;
 }
 
 function normalizarTexto(valor) {
@@ -3559,7 +3558,7 @@ function ProdutoCadastroTabelaSimples({ itens, onView }) {
       <div className="validade-tabela-simples-header" role="row">
         <span role="columnheader">PLU</span>
         <span role="columnheader">Nome</span>
-        <span role="columnheader">Validade / prazo</span>
+        <span role="columnheader">Val. / prazo</span>
       </div>
       {itens.map((item) => {
         const config = statusConfig[item.status];

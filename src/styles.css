@@ -2331,9 +2331,9 @@ button {
 .validade-tabela-simples-header,
 .validade-tabela-simples-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 114px;
+  grid-template-columns: 52px minmax(0, 1fr) 80px;
   align-items: center;
-  column-gap: 8px;
+  column-gap: 3px;
 }
 
 .validade-tabela-simples-header {
@@ -2388,6 +2388,7 @@ button {
 }
 
 .validade-tabela-simples-nome {
+  font-size: 10.5px;
   font-weight: 800;
 }
 
@@ -2396,7 +2397,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 3px;
   white-space: nowrap;
 }
 
