@@ -435,6 +435,32 @@ button {
   align-items: center;
 }
 
+.products-add-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--google-blue);
+  border-radius: 8px;
+  background: var(--google-blue);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.products-add-button:hover {
+  border-color: var(--google-blue-hover);
+  background: var(--google-blue-hover);
+}
+
+.products-add-button svg {
+  flex: none;
+}
+
 .products-heading .list-tools {
   gap: 6px;
 }

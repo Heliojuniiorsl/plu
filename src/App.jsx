@@ -15,6 +15,7 @@ import {
   PackageSearch,
   Palette,
   Pencil,
+  Plus,
   Search,
   Settings,
   ShieldCheck,
@@ -2504,6 +2505,7 @@ function ValidadesPage({
   setVisualizacaoValidades,
   filtroValidade,
   setFiltroValidade,
+  abrirCadastroProduto,
   abrirEdicaoProduto,
   excluirProduto,
   produtoDetalhe,
@@ -2512,15 +2514,20 @@ function ValidadesPage({
   const [filtroAberto, setFiltroAberto] = useState(false);
   const [calendarioAberto, setCalendarioAberto] = useState(false);
   const filtroAtivo = filtroValidade !== 'todos';
-  const totalProdutosTexto = `${validadesFiltradas.length} ${validadesFiltradas.length === 1 ? 'produto' : 'produtos'}`;
 
   return (
     <div className="page-grid">
       <section className="work-panel">
         <div className="section-heading products-heading">
-          <div>
-            <h3>{totalProdutosTexto}</h3>
-          </div>
+          <button
+            className="products-add-button"
+            type="button"
+            onClick={abrirCadastroProduto}
+            aria-label="Adicionar produto"
+          >
+            <Plus size={17} />
+            <span>Adicionar</span>
+          </button>
           <div className="heading-actions">
             <div className="view-toggle list-tools" aria-label="Acoes da lista">
               <button
