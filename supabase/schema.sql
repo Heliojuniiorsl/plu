@@ -73,9 +73,14 @@ create table if not exists public.preferencias_usuario (
   secoes_selecionadas text[] not null default '{}',
   secoes_configuradas boolean not null default false,
   tema text not null default 'claro' check (tema in ('claro', 'azul')),
+  visualizacao_validades text not null default 'tabela'
+    check (visualizacao_validades in ('tabela', 'simples')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.preferencias_usuario
+add column if not exists visualizacao_validades text not null default 'tabela';
 
 create index if not exists preferencias_usuario_matricula_idx on public.preferencias_usuario (matricula);
 

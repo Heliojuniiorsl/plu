@@ -96,7 +96,16 @@ function normalizarPreferencias(preferencias = {}) {
     secoesSelecionadas: Array.from(new Set(secoes.map((secao) => String(secao || '').trim()).filter(Boolean))),
     secoesConfiguradas: Boolean(preferencias.secoesConfiguradas ?? preferencias.secoes_configuradas),
     tema: ['claro', 'azul'].includes(preferencias.tema) ? preferencias.tema : 'claro',
+    visualizacaoValidades:
+      (preferencias.visualizacaoValidades ?? preferencias.visualizacao_validades) === 'simples'
+        ? 'simples'
+        : 'tabela',
   };
+}
+
+function colunaVisualizacaoValidadesAusente(error) {
+  const mensagem = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return mensagem.includes('visualizacao_validades') && ['42703', 'PGRST204'].includes(error?.code);
 }
 
 function normalizarUsuario(usuario) {
@@ -648,11 +657,19 @@ export async function carregarPreferenciasUsuario(usuario, fallback = {}) {
   if (!usuario) return preferenciasFallback;
 
   const usuarioBanco = await garantirUsuarioRemoto(usuario);
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('preferencias_usuario')
-    .select('secoes_selecionadas, secoes_configuradas, tema')
+    .select('secoes_selecionadas, secoes_configuradas, tema, visualizacao_validades')
     .eq('usuario_id', usuarioBanco.id)
     .maybeSingle();
+
+  if (error && colunaVisualizacaoValidadesAusente(error)) {
+    ({ data, error } = await supabase
+      .from('preferencias_usuario')
+      .select('secoes_selecionadas, secoes_configuradas, tema')
+      .eq('usuario_id', usuarioBanco.id)
+      .maybeSingle());
+  }
 
   if (error) {
     throw new Error(`Nao foi possivel carregar preferencias online: ${error.message}`);
@@ -678,9 +695,17 @@ export async function salvarPreferenciasUsuario(usuario, preferencias) {
     secoes_selecionadas: preferenciasNormalizadas.secoesSelecionadas,
     secoes_configuradas: preferenciasNormalizadas.secoesConfiguradas,
     tema: preferenciasNormalizadas.tema,
+    visualizacao_validades: preferenciasNormalizadas.visualizacaoValidades,
   };
 
-  const { error } = await supabase.from('preferencias_usuario').upsert(payload, { onConflict: 'usuario_id' });
+  let { error } = await supabase.from('preferencias_usuario').upsert(payload, { onConflict: 'usuario_id' });
+
+  if (error && colunaVisualizacaoValidadesAusente(error)) {
+    const { visualizacao_validades: _visualizacaoIgnorada, ...payloadCompativel } = payload;
+    ({ error } = await supabase.from('preferencias_usuario').upsert(payloadCompativel, {
+      onConflict: 'usuario_id',
+    }));
+  }
 
   if (error) {
     throw new Error(`Nao foi possivel salvar preferencias online: ${error.message}`);

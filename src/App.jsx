@@ -947,6 +947,7 @@ function App() {
       secoesSelecionadas,
       secoesConfiguradas,
       tema: temaAtual,
+      visualizacaoValidades,
     };
 
     salvarPreferenciasUsuario(usuarioAtual, preferencias).catch((error) => {
@@ -959,6 +960,7 @@ function App() {
     temaAtual,
     usuarioAtual,
     usuarioDadosChave,
+    visualizacaoValidades,
   ]);
 
   useEffect(() => {
@@ -1079,6 +1081,7 @@ function App() {
           secoesSelecionadas: [],
           secoesConfiguradas: false,
           tema: 'claro',
+          visualizacaoValidades: 'tabela',
         });
 
         if (cancelado) return;
@@ -1097,6 +1100,7 @@ function App() {
         setSecoesSelecionadas(normalizarSecoesSelecionadas(preferencias.secoesSelecionadas));
         setSecoesConfiguradas(Boolean(preferencias.secoesConfiguradas));
         setTemaAtual(normalizarTema(preferencias.tema));
+        setVisualizacaoValidades(preferencias.visualizacaoValidades === 'simples' ? 'simples' : 'tabela');
         aplicarValidadesRemotas(dados.validades);
         setUsuarioDadosChave(chaveValidadesUsuario(usuarioCarregado));
         setDadosRemotosCarregados(true);
@@ -1290,23 +1294,6 @@ function App() {
 
     return resumo;
   }, [validadesTratadas]);
-
-  const statusResumoCards = useMemo(
-    () => {
-      const candidatos = statusOrdem
-        .filter((status) => status !== 'vencido')
-        .map((status) => ({
-          id: status,
-          value: resumoValidades[status] || 0,
-          ...statusConfig[status],
-        }));
-      const ativos = candidatos.filter((status) => status.value > 0);
-      const vazios = candidatos.filter((status) => status.value === 0);
-
-      return [...ativos, ...vazios].slice(0, 3);
-    },
-    [resumoValidades],
-  );
 
   const statusFiltros = useMemo(
     () =>
@@ -1808,7 +1795,6 @@ function App() {
 
   const pageProps = {
     resumoValidades,
-    statusResumoCards,
     statusFiltros,
     validadesTratadas,
     validadesFiltradas,
@@ -2014,21 +2000,6 @@ function PageTitle({ eyebrow, title, description, icon: Icon }) {
         <p>{description}</p>
       </div>
     </div>
-  );
-}
-
-function MetricCard({ status, value, label }) {
-  const config = statusConfig[status];
-  const Icon = config.icon;
-
-  return (
-    <article className={`metric-card tone-${config.tone}`}>
-      <div>
-        <span>{label || config.label}</span>
-        <strong>{value}</strong>
-      </div>
-      <Icon size={24} />
-    </article>
   );
 }
 
@@ -2526,7 +2497,6 @@ function CategoriaFiltroSheet({ categorias, categoriaAtual, onSelect, onClose })
 
 function ValidadesPage({
   resumoValidades,
-  statusResumoCards,
   statusFiltros,
   validadesTratadas,
   validadesFiltradas,
@@ -2546,12 +2516,6 @@ function ValidadesPage({
 
   return (
     <div className="page-grid">
-      <div className="metrics-grid compact status-summary">
-        {statusResumoCards.map((item) => (
-          <MetricCard key={item.id} status={item.id} value={item.value} label={item.label} />
-        ))}
-      </div>
-
       <section className="work-panel">
         <div className="section-heading products-heading">
           <div>

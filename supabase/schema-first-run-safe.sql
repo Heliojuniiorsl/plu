@@ -51,9 +51,14 @@ create table if not exists public.preferencias_usuario (
   secoes_selecionadas text[] not null default '{}',
   secoes_configuradas boolean not null default false,
   tema text not null default 'claro' check (tema in ('claro', 'azul')),
+  visualizacao_validades text not null default 'tabela'
+    check (visualizacao_validades in ('tabela', 'simples')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.preferencias_usuario
+add column if not exists visualizacao_validades text not null default 'tabela';
 
 create table if not exists public.atividades_usuario (
   id uuid primary key default gen_random_uuid(),
