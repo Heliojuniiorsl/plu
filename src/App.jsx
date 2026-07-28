@@ -2726,6 +2726,7 @@ function CalendarioValidadesSheet({ itens, onClose }) {
         chave,
         dia: data.getDate(),
         noMes: data.getMonth() === mes,
+        hoje: data.getTime() === hoje.getTime(),
         produtos: produtosDia,
         config,
       };
@@ -2751,10 +2752,15 @@ function CalendarioValidadesSheet({ itens, onClose }) {
         onClick={(event) => event.stopPropagation()}
       >
         <div className="sheet-handle" />
-        <div className="sheet-header">
-          <div>
-            <span>Calendario</span>
-            <h3 id="calendario-validade-titulo">{tituloMes}</h3>
+        <div className="sheet-header calendar-sheet-header">
+          <div className="calendar-heading">
+            <div className="calendar-heading-icon" aria-hidden="true">
+              <CalendarCheck size={20} />
+            </div>
+            <div>
+              <span>Calendário</span>
+              <h3 id="calendario-validade-titulo">{tituloMes}</h3>
+            </div>
           </div>
           <button className="sheet-close" onClick={onClose} aria-label="Fechar calendario">
             <X size={20} />
@@ -2768,22 +2774,30 @@ function CalendarioValidadesSheet({ itens, onClose }) {
         </div>
 
         <div className="calendar-grid">
-          {calendario.map((dia) => (
-            <div
-              className={
-                dia.config
-                  ? `calendar-day tone-${dia.config.tone}${dia.noMes ? '' : ' muted'}`
-                  : `calendar-day${dia.noMes ? '' : ' muted'}`
-              }
-              key={dia.chave}
-            >
-              <span>{dia.dia}</span>
-              {dia.produtos.length > 0 && <strong>{dia.produtos.length}</strong>}
-            </div>
-          ))}
+          {calendario.map((dia) => {
+            const classes = ['calendar-day'];
+            if (dia.config) classes.push(`tone-${dia.config.tone}`, 'has-products');
+            if (!dia.noMes) classes.push('muted');
+            if (dia.hoje) classes.push('is-today');
+
+            return (
+              <div
+                className={classes.join(' ')}
+                key={dia.chave}
+                aria-label={`${dia.dia}${dia.produtos.length ? `, ${dia.produtos.length} produto(s)` : ''}`}
+              >
+                <span>{dia.dia}</span>
+                {dia.produtos.length > 0 && <strong>{dia.produtos.length}</strong>}
+              </div>
+            );
+          })}
         </div>
 
         <div className="calendar-next-list">
+          <div className="calendar-next-heading">
+            <span>Próximos vencimentos</span>
+            <strong>{proximasDatas.length}</strong>
+          </div>
           {proximasDatas.map((item) => {
             const config = statusConfig[item.status];
 
