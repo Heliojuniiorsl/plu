@@ -4004,16 +4004,16 @@ button {
   }
 
   .validade-linha-secundaria {
-    grid-template-columns: 0.56fr 0.58fr 0.86fr 0.52fr 0.82fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
   }
 
   .validade-linha-secundaria small {
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .validade-linha-secundaria b {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .produto-card,
