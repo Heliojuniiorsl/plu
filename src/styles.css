@@ -5323,3 +5323,20 @@ button {
 :root .produto-cadastro-card {
   border-left-color: var(--tone, #2563eb) !important;
 }
+
+:root .main-nav button.nav-action {
+  background: transparent;
+  border-color: transparent;
+  color: var(--google-muted);
+  box-shadow: none;
+}
+
+:root .main-nav button.nav-action svg {
+  color: var(--google-muted);
+}
+
+:root .main-nav button.nav-action:hover {
+  background: var(--google-surface-soft);
+  border-color: transparent;
+  color: var(--google-text);
+}
