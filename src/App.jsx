@@ -758,6 +758,13 @@ function textoDiasTabela(dias) {
   return `${dias} dias`;
 }
 
+function textoDiasCompacto(dias) {
+  if (dias < 0) return `${Math.abs(dias)}d venc.`;
+  if (dias === 0) return 'Hoje';
+  if (dias === 1) return '1 dia';
+  return `${dias} dias`;
+}
+
 function normalizarTexto(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -3552,7 +3559,7 @@ function ProdutoCadastroTabelaSimples({ itens, onView }) {
       <div className="validade-tabela-simples-header" role="row">
         <span role="columnheader">PLU</span>
         <span role="columnheader">Nome</span>
-        <span role="columnheader">Validade</span>
+        <span role="columnheader">Validade / prazo</span>
       </div>
       {itens.map((item) => {
         const config = statusConfig[item.status];
@@ -3563,11 +3570,14 @@ function ProdutoCadastroTabelaSimples({ itens, onView }) {
             key={item.id}
             type="button"
             onClick={() => onView(item)}
-            aria-label={`${item.plu}, ${item.produto}, validade ${formatarDataCurta(item.validade)}`}
+            aria-label={`${item.plu}, ${item.produto}, validade ${formatarDataCurta(item.validade)}, ${textoDiasTabela(item.dias)}`}
           >
             <b>{item.plu}</b>
-            <span>{item.produto}</span>
-            <time dateTime={item.validade}>{formatarDataCurta(item.validade)}</time>
+            <span className="validade-tabela-simples-nome">{item.produto}</span>
+            <span className="validade-tabela-simples-prazo">
+              <time dateTime={item.validade}>{formatarDataCurta(item.validade)}</time>
+              <em>{textoDiasCompacto(item.dias)}</em>
+            </span>
           </button>
         );
       })}

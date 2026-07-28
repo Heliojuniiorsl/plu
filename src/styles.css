@@ -2331,7 +2331,7 @@ button {
 .validade-tabela-simples-header,
 .validade-tabela-simples-row {
   display: grid;
-  grid-template-columns: minmax(72px, 0.72fr) minmax(0, 2.2fr) 70px;
+  grid-template-columns: 72px minmax(0, 1fr) 114px;
   align-items: center;
   column-gap: 8px;
 }
@@ -2373,7 +2373,7 @@ button {
 }
 
 .validade-tabela-simples-row b,
-.validade-tabela-simples-row span,
+.validade-tabela-simples-nome,
 .validade-tabela-simples-row time {
   overflow: hidden;
   min-width: 0;
@@ -2387,13 +2387,37 @@ button {
   color: #0b57d0;
 }
 
-.validade-tabela-simples-row span {
+.validade-tabela-simples-nome {
   font-weight: 800;
 }
 
-.validade-tabela-simples-row time {
+.validade-tabela-simples-prazo {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.validade-tabela-simples-prazo time {
   justify-self: end;
   font-weight: 900;
+}
+
+.validade-tabela-simples-prazo em {
+  padding: 2px 4px;
+  overflow: hidden;
+  border: 1px solid var(--tone-border, #dce4ee);
+  border-radius: 999px;
+  background: var(--tone-soft, #f8fafc);
+  color: #526174;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .validade-tabela-item:hover,
