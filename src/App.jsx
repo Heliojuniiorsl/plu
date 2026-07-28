@@ -93,7 +93,6 @@ function contarProdutosPorSecao(listaProdutos) {
 
 const navegacao = [
   { path: '/', label: 'Validade', icon: CalendarCheck },
-  { path: '/plu', label: 'PLU', icon: Calculator },
   { action: 'cadastro', label: 'Cadastrar', icon: PackageCheck },
   { path: '/pesquisa-plu', label: 'Pesquisa', icon: Search },
   { path: '/configuracao', label: 'Config', icon: Settings },
@@ -873,6 +872,7 @@ function App() {
   const ultimaAtividadeRef = useRef({ chave: '', at: 0 });
   const [filtroValidade, setFiltroValidade] = useState('todos');
   const [buscaValidade, setBuscaValidade] = useState('');
+  const [calculadoraAberta, setCalculadoraAberta] = useState(false);
   const [cadastroAberto, setCadastroAberto] = useState(false);
   const [cadastroEdicaoId, setCadastroEdicaoId] = useState(null);
   const [produtoDetalhe, setProdutoDetalhe] = useState(null);
@@ -1965,6 +1965,20 @@ function App() {
         {rotaRenderizada === '/configuracao' && <ConfiguracaoPage {...pageProps} />}
       </section>
 
+      {!calculadoraAberta && (
+        <button
+          className="floating-plu-button"
+          type="button"
+          title="Abrir calculadora de PLU"
+          aria-label="Abrir calculadora de PLU"
+          onClick={() => setCalculadoraAberta(true)}
+        >
+          <Calculator size={24} />
+        </button>
+      )}
+
+      {calculadoraAberta && <CalculadoraPluSheet {...pageProps} onClose={() => setCalculadoraAberta(false)} />}
+
       {cadastroAberto && (
         <CadastroProdutoSheet
           produtosBase={produtosFiltradosPorSecao}
@@ -2301,6 +2315,34 @@ function PluPage({
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+function CalculadoraPluSheet({ onClose, ...calculadoraProps }) {
+  return (
+    <div className="bottom-sheet-backdrop calculator-sheet-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="bottom-sheet calculator-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calculadora-plu-titulo"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="sheet-header calculator-sheet-header">
+          <div>
+            <span>PLU</span>
+            <h3 id="calculadora-plu-titulo">Calculadora</h3>
+          </div>
+          <button className="sheet-close" type="button" onClick={onClose} aria-label="Fechar calculadora">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="calculator-popup-content">
+          <PluPage {...calculadoraProps} />
+        </div>
+      </section>
     </div>
   );
 }
@@ -3365,13 +3407,6 @@ function CadastroProdutoSheet({
         aria-label={cadastroEdicaoId ? 'Editar produto' : 'Cadastrar produto'}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="cadastro-sheet-topbar">
-          <div className="sheet-handle" aria-hidden="true" />
-          <button className="sheet-close" onClick={fecharCadastroProduto} aria-label="Fechar cadastro">
-            <X size={20} />
-          </button>
-        </div>
-
         <form className="sheet-form" onSubmit={adicionarValidade}>
           <label>
             PLU / EAN
@@ -3447,10 +3482,16 @@ function CadastroProdutoSheet({
             </label>
           </div>
 
-          <button className="primary-button sheet-submit" type="submit">
-            <CheckCircle2 size={18} />
-            {cadastroEdicaoId ? 'Salvar alterações' : 'Salvar produto'}
-          </button>
+          <div className="cadastro-form-actions">
+            <button className="secondary-button cadastro-cancel-button" type="button" onClick={fecharCadastroProduto}>
+              <X size={18} />
+              Cancelar
+            </button>
+            <button className="primary-button sheet-submit" type="submit">
+              <CheckCircle2 size={18} />
+              {cadastroEdicaoId ? 'Salvar alterações' : 'Salvar produto'}
+            </button>
+          </div>
         </form>
       </section>
     </div>
@@ -3490,14 +3531,6 @@ function ProdutoCadastroTabela({ itens, onView }) {
                   <small>EAN</small>
                   <b>{item.plu}</b>
                 </span>
-                <span>
-                  <small>Tipo</small>
-                  <b>{item.tipo}</b>
-                </span>
-                <span>
-                  <small>Local</small>
-                  <b>{item.setor}</b>
-                </span>
               </span>
             </button>
           );
@@ -3521,7 +3554,6 @@ function ProdutoCadastroCard({ item, onView, onEdit, onDelete }) {
         <div className="produto-info-grid">
           <InfoBox label="Código" value={item.plu} />
           <InfoBox label="Qtd." value={item.quantidade} />
-          <InfoBox label="Local" value={item.setor} />
           <InfoBox label="Validade" value={formatarData(item.validade)} />
         </div>
 
