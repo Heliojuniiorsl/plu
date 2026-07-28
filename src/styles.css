@@ -5366,3 +5366,11 @@ button {
   border-color: transparent;
   color: var(--google-text);
 }
+
+:root .products-add-button span {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: none;
+}
