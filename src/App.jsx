@@ -2561,13 +2561,6 @@ function ValidadesPage({
                 <List size={18} />
               </button>
               <button
-                className={visualizacaoValidades === 'cards' ? 'active' : ''}
-                onClick={() => setVisualizacaoValidades('cards')}
-                title="Visualizar como cards"
-              >
-                <Grid3x3 size={18} />
-              </button>
-              <button
                 className={visualizacaoValidades === 'simples' ? 'active' : ''}
                 onClick={() => setVisualizacaoValidades('simples')}
                 title="Visualizar tabela compacta"
@@ -2591,19 +2584,7 @@ function ValidadesPage({
         </div>
 
         {validadesFiltradas.length > 0 ? (
-          visualizacaoValidades === 'cards' ? (
-            <div className="validade-list">
-              {validadesFiltradas.map((item) => (
-                <ProdutoCadastroCard
-                  key={item.id}
-                  item={item}
-                  onView={setProdutoDetalhe}
-                  onEdit={abrirEdicaoProduto}
-                  onDelete={excluirProduto}
-                />
-              ))}
-            </div>
-          ) : visualizacaoValidades === 'simples' ? (
+          visualizacaoValidades === 'simples' ? (
             <ProdutoCadastroTabelaSimples itens={validadesFiltradas} onView={setProdutoDetalhe} />
           ) : (
             <ProdutoCadastroTabela
@@ -3576,48 +3557,6 @@ function ProdutoCadastroTabelaSimples({ itens, onView }) {
           </button>
         );
       })}
-    </div>
-  );
-}
-
-function ProdutoCadastroCard({ item, onView, onEdit, onDelete }) {
-  const config = statusConfig[item.status];
-
-  return (
-    <article className={`produto-cadastro-card tone-${config.tone}${item.dias <= 3 ? ' is-alerting' : ''}`}>
-      <div className="produto-card-content">
-        <div className="produto-name-box">
-          <span className={`produto-status tone-${config.tone}`}>{config.badge}</span>
-          <h3>{item.produto}</h3>
-        </div>
-
-        <div className="produto-info-grid">
-          <InfoBox label="Código" value={item.plu} />
-          <InfoBox label="Qtd." value={item.quantidade} />
-          <InfoBox label="Validade" value={formatarData(item.validade)} />
-        </div>
-
-        <div className="produto-actions">
-          <button className="produto-action-btn view" onClick={() => onView(item)} title="Visualizar produto">
-            <Eye size={20} />
-          </button>
-          <button className="produto-action-btn edit" onClick={() => onEdit(item)} title="Editar produto">
-            <Pencil size={20} />
-          </button>
-          <button className="produto-action-btn delete" onClick={() => onDelete(item.id)} title="Excluir produto">
-            <Trash2 size={20} />
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function InfoBox({ label, value }) {
-  return (
-    <div className="produto-info-box">
-      <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   );
 }
